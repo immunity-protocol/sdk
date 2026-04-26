@@ -43,13 +43,17 @@ export function parseVerdict(raw: string): RawVerdict {
 
   const verdict = enumOrThrow<RawVerdict["verdict"]>(json.verdict, VERDICT_KEYS, "verdict");
   const abType = enumOrThrow<AntibodyType>(json.abType, ABTYPE_KEYS, "abType");
+  // Flavor is meaningful only for SEMANTIC; for any other abType we coerce
+  // to null silently. qwen sometimes returns a flavor on ADDRESS / CALL_PATTERN
+  // verdicts despite the prompt asking it not to. Hard-rejecting on that
+  // would discard otherwise-good verdicts; flavor isn't load-bearing on the
+  // matcher side except for SEMANTIC.
   const flavor =
-    json.flavor === null || json.flavor === undefined
+    abType !== "SEMANTIC"
       ? null
-      : enumOrThrow<SemanticFlavor>(json.flavor, FLAVOR_KEYS, "flavor");
-  if (abType !== "SEMANTIC" && flavor !== null) {
-    throw new TeeResponseError(`flavor must be null when abType is ${abType}`);
-  }
+      : json.flavor === null || json.flavor === undefined
+        ? null
+        : enumOrThrow<SemanticFlavor>(json.flavor, FLAVOR_KEYS, "flavor");
   const confidence = clampInt(json.confidence, "confidence");
   const severity = clampInt(json.severity, "severity");
   const reasoning = typeof json.reasoning === "string" ? json.reasoning : "";

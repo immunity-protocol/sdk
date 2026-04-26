@@ -50,19 +50,20 @@ describe("parseVerdict", () => {
     ).toThrow();
   });
 
-  it("requires flavor to be null when abType is not SEMANTIC", () => {
-    expect(() =>
-      parseVerdict(
-        JSON.stringify({
-          verdict: "MALICIOUS",
-          abType: "ADDRESS",
-          flavor: "MANIPULATION",
-          confidence: 80,
-          severity: 80,
-          reasoning: "",
-        }),
-      ),
-    ).toThrow();
+  it("coerces flavor to null when abType is not SEMANTIC", () => {
+    // qwen sometimes returns a flavor on ADDRESS / CALL_PATTERN despite the
+    // prompt; the parser silently drops it instead of rejecting the verdict.
+    const v = parseVerdict(
+      JSON.stringify({
+        verdict: "MALICIOUS",
+        abType: "ADDRESS",
+        flavor: "MANIPULATION",
+        confidence: 80,
+        severity: 80,
+        reasoning: "",
+      }),
+    );
+    expect(v.flavor).toBeNull();
   });
 
   it("clamps confidence to integer in [0,100]", () => {
