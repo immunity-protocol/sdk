@@ -35,7 +35,7 @@ export async function runInference(
       model: broker.service.model,
       messages: [{ role: "user", content: prompt }],
     },
-    { headers },
+    { headers: headers as unknown as Record<string, string> },
   );
   const latencyMs = Date.now() - start;
 
@@ -47,13 +47,14 @@ export async function runInference(
 
   let signedAndValid = false;
   try {
-    signedAndValid = await broker.raw.inference.processResponse(
+    const result = await broker.raw.inference.processResponse(
       broker.service.provider,
       chatId,
       raw,
     );
+    signedAndValid = result === true;
   } catch (err) {
-    log.warn("processResponse threw — treating as unverified", err);
+    log.warn("processResponse threw; treating as unverified", err);
   }
   if (!signedAndValid) {
     throw new TeeResponseError("processResponse rejected the TEE signature");
