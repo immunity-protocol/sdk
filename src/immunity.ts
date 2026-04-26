@@ -1,7 +1,8 @@
 import { generateKeyPairSync } from "node:crypto";
 import { Gossip, type GossipOptions, parseKeyPairFromPem } from "axl-pubsub";
+import type { Signer } from "ethers";
 import { AntibodyCache } from "./cache/cache.js";
-import { runCheck } from "./check-flow.js";
+import { runCheck, type TeeVerifyOutcome } from "./check-flow.js";
 import { GossipPublisher } from "./gossip/publisher.js";
 import { GossipSubscriber } from "./gossip/subscriber.js";
 import { AddressMatcher } from "./matchers/address.js";
@@ -10,7 +11,8 @@ import { CallPatternMatcher } from "./matchers/call-pattern.js";
 import { GraphMatcher } from "./matchers/graph.js";
 import { MatcherRegistry } from "./matchers/matcher.js";
 import { SemanticMatcher } from "./matchers/semantic.js";
-import { resolveNetwork } from "./network.js";
+import { resolveNetwork, TESTNET } from "./network.js";
+import { createTeeVerifier } from "./tee/verifier.js";
 import {
   type PublisherStats,
   balanceOf as balanceOfRegistry,
@@ -90,6 +92,7 @@ export class Immunity {
   readonly #network: NetworkConfig;
 
   #wallet?: Address;
+  #signer?: Signer;
   #registry?: RegistryClient;
   #usdc?: UsdcClient;
   #cache?: AntibodyCache;
@@ -97,6 +100,9 @@ export class Immunity {
   #gossip?: Gossip;
   #subscriber?: GossipSubscriber;
   #publisher?: GossipPublisher;
+  #teeVerifierPromise?: Promise<
+    ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
+  >;
   #started = false;
 
   constructor(config: ImmunityConfig) {
@@ -118,6 +124,7 @@ export class Immunity {
 
     const resolved = await resolveSigner(this.#config.wallet, this.#network.rpcUrl);
     this.#wallet = resolved.address;
+    this.#signer = resolved.signer;
     this.#registry = createRegistryClient(this.#network.registryAddress, resolved.signer);
     this.#usdc = createUsdcClient(this.#network.usdcAddress, resolved.signer);
 
@@ -163,6 +170,43 @@ export class Immunity {
       registry: this.#network.registryAddress,
       chainId: this.#network.chainId,
     });
+
+    // Lazy-init the TEE verifier in the background. start() returns fast;
+    // the first novel-threat check pays the broker-handshake latency.
+    if ((this.#config.novelThreatPolicy ?? "verify") === "verify") {
+      this.#teeVerifierPromise = this.#initTeeVerifier();
+    }
+  }
+
+  async #initTeeVerifier(): Promise<
+    ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
+  > {
+    if (!this.#signer) return null;
+    const computeProvider = this.#network.computeProvider ?? TESTNET.computeProvider;
+    const storageIndexerUrl = this.#network.storageIndexerUrl ?? TESTNET.storageIndexerUrl;
+    if (!computeProvider || !storageIndexerUrl) {
+      log.warn(
+        "novelThreatPolicy=verify but network preset has no computeProvider/storageIndexerUrl; falling back to trust-cache",
+      );
+      return null;
+    }
+    try {
+      return await createTeeVerifier({
+        signer: this.#signer,
+        rpcUrl: this.#network.rpcUrl,
+        storageIndexerUrl,
+        preferredProvider: computeProvider,
+        blockThreshold: this.#config.confidenceThresholds?.block ?? 85,
+        escalateThreshold: this.#config.confidenceThresholds?.escalate ?? 60,
+        defaultChainId: this.#network.chainId,
+      });
+    } catch (err) {
+      log.warn(
+        "TEE verifier init failed; novel-threat path falls back to trust-cache for this session",
+        err,
+      );
+      return null;
+    }
   }
 
   async stop(): Promise<void> {
@@ -181,6 +225,7 @@ export class Immunity {
     options?: CheckOptions,
   ): Promise<CheckResult> {
     const s = this.ensureStarted();
+    const teeVerify = this.#teeVerifierPromise ? await this.#teeVerifierPromise : null;
     return runCheck(tx, context, options, {
       wallet: s.wallet,
       registry: s.registry,
@@ -190,7 +235,7 @@ export class Immunity {
       defaultChainId: s.network.chainId,
       policy: this.#config.novelThreatPolicy ?? "verify",
       ...(this.#config.onEscalate ? { onEscalate: this.#config.onEscalate } : {}),
-      // teeVerify is wired in a follow-up commit when the TEE module lands.
+      ...(teeVerify ? { teeVerify } : {}),
     });
   }
 
