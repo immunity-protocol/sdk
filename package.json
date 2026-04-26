@@ -56,7 +56,7 @@
   "dependencies": {
     "@0gfoundation/0g-ts-sdk": "1.2.2",
     "@0glabs/0g-serving-broker": "0.7.5",
-    "axl-pubsub": "^0.1.0",
+    "axl-pubsub": "^0.1.1",
     "ethers": "^6.14.0",
     "openai": "^4.0.0"
   },
