@@ -26,8 +26,9 @@ export interface TeeBrokerOptions {
   signer: Signer;
   preferredProvider?: Address;
   /**
-   * If `true`, ensure the ledger has at least `minLedgerOg` 0G and the
-   * provider sub-account holds at least `minProviderOg` 0G before returning.
+   * If `true`, ensure the ledger has at least `minLedgerOg` 0G, register the
+   * wallet as authorized for the provider via `acknowledgeProviderSigner`,
+   * and fund the provider sub-account with `minProviderOg` 0G before returning.
    * Off by default so library construction is non-mutating; the integration
    * tests / CLI bootstrap flow flip it on.
    */
@@ -37,23 +38,29 @@ export interface TeeBrokerOptions {
 }
 
 /**
- * Initialize the 0G Compute broker, discover services, and bind to a
- * preferred chatbot provider (default: first chatbot in the catalog, or
- * a configured `preferredProvider`).
+ * Initialize the 0G Compute broker, discover services, ensure the ledger and
+ * provider sub-account are funded, register the wallet as an authorized signer
+ * with the provider, and bind to a preferred chatbot provider.
  *
- * Funding is left to the caller unless `ensureFunded` is set: the broker
- * has hard minimums (3 0G ledger, 1 0G per-provider) and we don't want
- * silent on-chain spend during library construction.
+ * The funding sequence mirrors what was empirically validated in the
+ * zerog-exploration spike (see FINDINGS.md "TEE attestation"):
+ *
+ *   1. Discover services (cheap, no funds required).
+ *   2. Pick a provider (preferred override, else first chatbot).
+ *   3. Ensure ledger has 3+ 0G (creates with `addLedger(3)` if missing).
+ *   4. `acknowledgeProviderSigner(provider)` — 2 on-chain txs, idempotent.
+ *      WITHOUT this, processResponse rejects signatures later. Skipping it
+ *      is the most common cause of "TEE inference works but per-response
+ *      verification fails" in fresh wallets.
+ *   5. `transferFund(provider, "inference", 1 0G)` — provider sub-account.
+ *   6. Re-fetch metadata for the chosen provider's endpoint + model.
  */
 export async function initTeeBroker(opts: TeeBrokerOptions): Promise<TeeBroker> {
   const broker = await createZGComputeNetworkBroker(
     opts.signer as unknown as Parameters<typeof createZGComputeNetworkBroker>[0],
   );
 
-  if (opts.ensureFunded) {
-    await ensureFunded(broker, opts);
-  }
-
+  // 1-2. Discover services and pick a candidate.
   const services = await broker.inference.listService();
   const candidate =
     (opts.preferredProvider
@@ -63,6 +70,14 @@ export async function initTeeBroker(opts: TeeBrokerOptions): Promise<TeeBroker> 
     services[0];
   if (!candidate) throw new TeeAttestationError("no inference services discovered");
 
+  // 3-5. Optional funding + signer ack.
+  if (opts.ensureFunded) {
+    await ensureLedger(broker, opts.minLedgerOg ?? 3);
+    await acknowledgeSigner(broker, candidate.provider as Address);
+    await ensureProviderFunded(broker, candidate.provider as Address, opts.minProviderOg ?? 1);
+  }
+
+  // 6. Endpoint + model metadata.
   const meta = await broker.inference.getServiceMetadata(candidate.provider);
   log.info("bound TEE service", {
     provider: candidate.provider,
@@ -80,27 +95,46 @@ export async function initTeeBroker(opts: TeeBrokerOptions): Promise<TeeBroker> 
   };
 }
 
-async function ensureFunded(
+async function ensureLedger(
   broker: Awaited<ReturnType<typeof createZGComputeNetworkBroker>>,
-  opts: TeeBrokerOptions,
+  minLedger: number,
 ): Promise<void> {
-  const minLedger = opts.minLedgerOg ?? 3;
-  const minProvider = opts.minProviderOg ?? 1;
   try {
     await broker.ledger.getLedger();
   } catch {
-    log.info("ledger missing — creating with minimum deposit", { minLedger });
+    log.info("ledger missing; creating with minimum deposit", { minLedger });
     await broker.ledger.addLedger(minLedger);
   }
-  if (opts.preferredProvider) {
-    try {
-      await broker.ledger.transferFund(
-        opts.preferredProvider,
-        "inference",
-        ethers.parseEther(String(minProvider)),
-      );
-    } catch (err) {
-      log.warn("transferFund failed (may already be funded)", err);
-    }
+}
+
+/**
+ * Idempotent registration of the caller as an authorized signer for the
+ * given provider. The 0G-compute SDK sends 2 on-chain txs internally; if
+ * already acknowledged, the second call typically throws and we swallow it.
+ */
+async function acknowledgeSigner(
+  broker: Awaited<ReturnType<typeof createZGComputeNetworkBroker>>,
+  provider: Address,
+): Promise<void> {
+  try {
+    await broker.inference.acknowledgeProviderSigner(provider);
+    log.info("acknowledged TEE signer", { provider });
+  } catch (err) {
+    log.info("acknowledgeProviderSigner: already acknowledged or non-fatal", {
+      message: (err as { message?: string }).message,
+    });
+  }
+}
+
+async function ensureProviderFunded(
+  broker: Awaited<ReturnType<typeof createZGComputeNetworkBroker>>,
+  provider: Address,
+  minProvider: number,
+): Promise<void> {
+  try {
+    await broker.ledger.transferFund(provider, "inference", ethers.parseEther(String(minProvider)));
+    log.info("provider sub-account funded", { provider, amount: minProvider });
+  } catch (err) {
+    log.warn("transferFund non-fatal (may already be funded)", err);
   }
 }
