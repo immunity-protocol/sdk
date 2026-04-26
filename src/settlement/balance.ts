@@ -27,11 +27,18 @@ export async function publisherStats(
   registry: RegistryClient,
   publisher: Address,
 ): Promise<PublisherStats> {
-  const result = await registry.contract.getPublisherStats(normalizeAddress(publisher));
+  const result = (await registry.contract.getPublisherStats(
+    normalizeAddress(publisher),
+  )) as {
+    totalStaked: bigint;
+    totalEarned: bigint;
+    publishedCount: bigint;
+    slashedCount: bigint;
+  };
   return {
-    totalStaked: result.totalStaked as bigint,
-    totalEarned: result.totalEarned as bigint,
-    publishedCount: result.publishedCount as bigint,
-    slashedCount: result.slashedCount as bigint,
+    totalStaked: result.totalStaked,
+    totalEarned: result.totalEarned,
+    publishedCount: result.publishedCount,
+    slashedCount: result.slashedCount,
   };
 }

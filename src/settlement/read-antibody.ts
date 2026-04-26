@@ -11,7 +11,7 @@ export async function getAntibody(
   registry: RegistryClient,
   keccakId: Hex32,
 ): Promise<Antibody> {
-  const struct: ChainAntibody = await registry.contract.getAntibody(keccakId);
+  const struct = (await registry.contract.getAntibody(keccakId)) as ChainAntibody;
   if (
     struct.publisher.toLowerCase() === ZERO_ADDRESS &&
     struct.primaryMatcherHash.toLowerCase() === ZERO_BYTES32
@@ -25,15 +25,15 @@ export async function getAntibodyByImmSeq(
   registry: RegistryClient,
   immSeq: number,
 ): Promise<Antibody> {
-  const struct: ChainAntibody = await registry.contract.getAntibodyByImmSeq(immSeq);
+  const struct = (await registry.contract.getAntibodyByImmSeq(immSeq)) as ChainAntibody;
   if (struct.publisher.toLowerCase() === ZERO_ADDRESS) {
     throw new AntibodyNotFoundError(immSeq);
   }
   // The contract does not return keccakId from this view; recompute it via
   // the pure helper to avoid an extra round-trip. The decoder lower-cases.
   const keccakId = (await registry.contract.computeKeccakId(
-    struct.abType,
-    struct.flavor,
+    Number(struct.abType),
+    Number(struct.flavor),
     struct.primaryMatcherHash,
     struct.publisher,
   )) as Hex32;
