@@ -1,4 +1,5 @@
-import { Gossip } from "axl-pubsub";
+import { generateKeyPairSync } from "node:crypto";
+import { Gossip, type GossipOptions, parseKeyPairFromPem } from "axl-pubsub";
 import { AntibodyCache } from "./cache/cache.js";
 import { runCheck } from "./check-flow.js";
 import { GossipPublisher } from "./gossip/publisher.js";
@@ -105,10 +106,18 @@ export class Immunity {
       this.#matchers.register(m as any);
     }
 
-    this.#gossip = new Gossip({
-      axlUrl: this.#config.axlUrl,
-      ...(this.#config.axlIdentityPath ? { privateKeyPath: this.#config.axlIdentityPath } : {}),
-    });
+    const gossipOpts: GossipOptions = { axlUrl: this.#config.axlUrl };
+    if (this.#config.axlIdentityPath) {
+      gossipOpts.privateKeyPath = this.#config.axlIdentityPath;
+    } else {
+      log.warn(
+        "axlIdentityPath not configured; generating ephemeral keypair (peer id will not persist across restarts)",
+      );
+      const { privateKey } = generateKeyPairSync("ed25519");
+      const pem = privateKey.export({ type: "pkcs8", format: "pem" }) as string;
+      gossipOpts.keyPair = await parseKeyPairFromPem(pem);
+    }
+    this.#gossip = new Gossip(gossipOpts);
     await this.#gossip.start();
     this.#subscriber = new GossipSubscriber(this.#gossip, this.#cache);
     await this.#subscriber.start();
