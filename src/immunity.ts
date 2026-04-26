@@ -1,6 +1,11 @@
 import { Gossip } from "axl-pubsub";
 import { AntibodyCache } from "./cache/cache.js";
 import { runCheck } from "./check-flow.js";
+import {
+  publish as publishAntibody,
+  type PublishInput,
+  type PublishResult,
+} from "./settlement/publish.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
 import type { CheckContext, ProposedTx } from "./types/context.js";
 import { AddressMatcher } from "./matchers/address.js";
@@ -132,6 +137,11 @@ export class Immunity {
       ...(this.#config.onEscalate ? { onEscalate: this.#config.onEscalate } : {}),
       // teeVerify is wired in a follow-up commit when the TEE module lands.
     });
+  }
+
+  async publish(input: PublishInput): Promise<PublishResult> {
+    const s = this.ensureStarted();
+    return publishAntibody(s.registry, s.wallet, input);
   }
 
   /** Internal accessors for the facade's downstream methods. */
