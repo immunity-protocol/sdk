@@ -42,6 +42,40 @@ import { resolveSigner } from "./wallet/signer.js";
 
 const log = createLogger("immunity");
 
+const ZERO_BYTES32: Hex32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+function synthAntibodyForPublish(
+  result: PublishResult,
+  publisher: Address,
+  input: PublishInput,
+): Antibody {
+  const flavor = result.params.flavor;
+  return {
+    keccakId: result.keccakId,
+    immSeq: result.immSeq,
+    immId: `IMM-${new Date().getUTCFullYear()}-${String(result.immSeq).padStart(4, "0")}`,
+    abType: input.seed.abType,
+    flavor,
+    verdict: input.verdict,
+    status: "ACTIVE",
+    confidence: input.confidence,
+    severity: input.severity,
+    primaryMatcherHash: result.params.primaryMatcherHash,
+    evidenceCid: input.evidenceCid ?? ZERO_BYTES32,
+    contextHash: input.contextHash ?? ZERO_BYTES32,
+    embeddingHash: input.embeddingHash ?? ZERO_BYTES32,
+    attestation: input.attestation ?? ZERO_BYTES32,
+    publisher,
+    reviewer: input.reviewer ?? publisher,
+    stakeAmount: 1_000_000n,
+    stakeLockUntil: 0n,
+    expiresAt: input.expiresAt ?? 0n,
+    createdAt: BigInt(Math.floor(Date.now() / 1000)),
+    isSeeded: false,
+    seed: input.seed,
+  };
+}
+
 /**
  * Top-level SDK facade. Construct once per agent process.
  *
@@ -162,7 +196,16 @@ export class Immunity {
 
   async publish(input: PublishInput): Promise<PublishResult> {
     const s = this.ensureStarted();
-    return publishAntibody(s.registry, s.wallet, input);
+    const result = await publishAntibody(s.registry, s.wallet, input);
+    // Mint side-effect: gossip the antibody and prime the local cache so
+    // peers learn about it without waiting for an on-chain event scan and
+    // future check() calls on the same publisher hit cache directly.
+    const minted = synthAntibodyForPublish(result, s.wallet, input);
+    s.cache.put(minted);
+    s.publisher.announce(minted).catch((err) =>
+      log.warn("gossip announce failed; on-chain publish is still authoritative", err),
+    );
+    return result;
   }
 
   async deposit(
