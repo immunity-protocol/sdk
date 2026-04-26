@@ -1,5 +1,8 @@
 import { Gossip } from "axl-pubsub";
 import { AntibodyCache } from "./cache/cache.js";
+import { runCheck } from "./check-flow.js";
+import type { CheckOptions, CheckResult } from "./types/check.js";
+import type { CheckContext, ProposedTx } from "./types/context.js";
 import { AddressMatcher } from "./matchers/address.js";
 import { BytecodeMatcher, type CodeFetcher } from "./matchers/bytecode.js";
 import { CallPatternMatcher } from "./matchers/call-pattern.js";
@@ -110,6 +113,25 @@ export class Immunity {
       if (this.#gossip) await this.#gossip.stop();
       this.#started = false;
     }
+  }
+
+  async check(
+    tx: ProposedTx | null,
+    context: CheckContext,
+    options?: CheckOptions,
+  ): Promise<CheckResult> {
+    const s = this.ensureStarted();
+    return runCheck(tx, context, options, {
+      wallet: s.wallet,
+      registry: s.registry,
+      cache: s.cache,
+      matchers: s.matchers,
+      publisher: s.publisher,
+      defaultChainId: s.network.chainId,
+      policy: this.#config.novelThreatPolicy ?? "verify",
+      ...(this.#config.onEscalate ? { onEscalate: this.#config.onEscalate } : {}),
+      // teeVerify is wired in a follow-up commit when the TEE module lands.
+    });
   }
 
   /** Internal accessors for the facade's downstream methods. */
