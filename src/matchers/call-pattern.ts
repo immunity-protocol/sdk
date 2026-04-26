@@ -1,9 +1,9 @@
-import { keccak256, getBytes } from "ethers";
+import { getBytes, keccak256 } from "ethers";
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashCallPatternMatcher } from "../keccak/matchers/call-pattern.js";
 import type { Antibody } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
-import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
+import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * CallPatternMatcher: looks up against `(chainId, target, selector, argsTemplateHash)`.
@@ -40,7 +40,7 @@ export class CallPatternMatcher implements Matcher {
     const chainId = probe.tx.chainId ?? this.defaultChainId;
     const target = normalizeAddress(probe.tx.to);
     const selector = probe.tx.data.slice(0, 10) as `0x${string}`;
-    const argsTemplate = (`0x${probe.tx.data.slice(10)}`) as `0x${string}`;
+    const argsTemplate = `0x${probe.tx.data.slice(10)}` as `0x${string}`;
 
     const exact = this.index.get(this.indexKey(chainId, target, selector, argsTemplate));
     if (exact && exact.status === "ACTIVE") {

@@ -7,10 +7,7 @@ import type { RegistryClient } from "./registry-client.js";
 const ZERO_BYTES32: Hex32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-export async function getAntibody(
-  registry: RegistryClient,
-  keccakId: Hex32,
-): Promise<Antibody> {
+export async function getAntibody(registry: RegistryClient, keccakId: Hex32): Promise<Antibody> {
   const struct = (await registry.contract.getAntibody(keccakId)) as ChainAntibody;
   if (
     struct.publisher.toLowerCase() === ZERO_ADDRESS &&

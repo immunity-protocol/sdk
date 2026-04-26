@@ -49,10 +49,7 @@ export interface RegistryClient {
   readonly signer: Signer;
 }
 
-export function createRegistryClient(
-  registryAddress: Address,
-  signer: Signer,
-): RegistryClient {
+export function createRegistryClient(registryAddress: Address, signer: Signer): RegistryClient {
   const contract = new Contract(
     registryAddress,
     RegistryAbi.abi,

@@ -10,11 +10,7 @@ import type { UsdcClient } from "./usdc-client.js";
  * surfaced through `Immunity.mintTestUsdc()` as a convenience for the
  * quickstart example. Prefer the faucet for 0G; this covers USDC.
  */
-export async function mintTestUsdc(
-  usdc: UsdcClient,
-  to: Address,
-  amount: bigint,
-): Promise<Hex32> {
+export async function mintTestUsdc(usdc: UsdcClient, to: Address, amount: bigint): Promise<Hex32> {
   if (amount <= 0n) throw new Error("mint amount must be positive");
   const tx = await usdc.contract.mint(normalizeAddress(to), amount);
   const receipt = await tx.wait();

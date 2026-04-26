@@ -19,14 +19,8 @@ export interface InferenceResult {
  *
  * `getRequestHeaders` is single-use. We regenerate per call.
  */
-export async function runInference(
-  broker: TeeBroker,
-  prompt: string,
-): Promise<InferenceResult> {
-  const headers = await broker.raw.inference.getRequestHeaders(
-    broker.service.provider,
-    prompt,
-  );
+export async function runInference(broker: TeeBroker, prompt: string): Promise<InferenceResult> {
+  const headers = await broker.raw.inference.getRequestHeaders(broker.service.provider, prompt);
   const openai = new OpenAI({ baseURL: broker.service.endpoint, apiKey: "" });
 
   const start = Date.now();
@@ -47,11 +41,7 @@ export async function runInference(
 
   let signedAndValid = false;
   try {
-    const result = await broker.raw.inference.processResponse(
-      broker.service.provider,
-      chatId,
-      raw,
-    );
+    const result = await broker.raw.inference.processResponse(broker.service.provider, chatId, raw);
     signedAndValid = result === true;
   } catch (err) {
     log.warn("processResponse threw; treating as unverified", err);

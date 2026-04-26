@@ -1,10 +1,4 @@
-import {
-  JsonRpcProvider,
-  type Provider,
-  type Signer,
-  Wallet,
-  isAddress,
-} from "ethers";
+import { JsonRpcProvider, type Provider, type Signer, Wallet, isAddress } from "ethers";
 import type { Address } from "../types/antibody.js";
 import { MissingConfigError } from "../types/errors.js";
 import { normalizeAddress } from "../util/address.js";

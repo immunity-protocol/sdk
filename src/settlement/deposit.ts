@@ -45,10 +45,7 @@ export async function deposit(
   };
 }
 
-export async function withdraw(
-  registry: RegistryClient,
-  amount: bigint,
-): Promise<Hex32> {
+export async function withdraw(registry: RegistryClient, amount: bigint): Promise<Hex32> {
   if (amount <= 0n) throw new Error("withdraw amount must be positive");
   const tx = await registry.contract.withdraw(amount);
   const receipt = await tx.wait();

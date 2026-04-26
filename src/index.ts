@@ -15,7 +15,12 @@ export type {
   Status,
   Verdict,
 } from "./types/antibody.js";
-export { AntibodyTypeValue, SemanticFlavorValue, StatusValue, VerdictValue } from "./types/antibody.js";
+export {
+  AntibodyTypeValue,
+  SemanticFlavorValue,
+  StatusValue,
+  VerdictValue,
+} from "./types/antibody.js";
 
 export type {
   CheckContext,

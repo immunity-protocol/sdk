@@ -11,7 +11,12 @@
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 const envFlag = process.env.IMMUNITY_DEBUG ?? "";
-const enabled = new Set(envFlag.split(",").map((s) => s.trim()).filter(Boolean));
+const enabled = new Set(
+  envFlag
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 const allOn = enabled.has("*");
 
 const order: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
@@ -42,7 +47,10 @@ export interface Logger {
 }
 
 export function createLogger(namespace: string): Logger {
-  const log = (level: LogLevel) => (...args: unknown[]) => emit(namespace, level, args);
+  const log =
+    (level: LogLevel) =>
+    (...args: unknown[]) =>
+      emit(namespace, level, args);
   return {
     debug: log("debug"),
     info: log("info"),

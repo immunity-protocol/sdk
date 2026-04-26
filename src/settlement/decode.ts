@@ -87,9 +87,7 @@ function enumOrThrow<T>(map: Record<number, T>, code: number, label: string): T 
   return v;
 }
 
-function invert<K extends string, V extends number>(
-  obj: Record<K, V>,
-): Record<V, K> {
+function invert<K extends string, V extends number>(obj: Record<K, V>): Record<V, K> {
   const out = {} as Record<V, K>;
   for (const k of Object.keys(obj) as K[]) out[obj[k]] = k;
   return out;

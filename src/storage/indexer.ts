@@ -58,10 +58,9 @@ export function createStorageClient(opts: StorageClientOptions): StorageClient {
     try {
       const err = await indexer.download(rootHash, file, true);
       if (err) {
-        throw new NetworkError(
-          `storage download failed: ${describeError(err)}`,
-          { cause: err as unknown },
-        );
+        throw new NetworkError(`storage download failed: ${describeError(err)}`, {
+          cause: err as unknown,
+        });
       }
       return new Uint8Array(readFileSync(file));
     } finally {

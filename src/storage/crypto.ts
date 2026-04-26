@@ -21,18 +21,12 @@ const IV_BYTES = 12;
  * attested public key — deferred to v2 since 0G Compute's testnet brokers
  * do not yet expose an attested encryption pubkey).
  */
-export async function encryptBundle(
-  plaintext: Uint8Array,
-): Promise<EncryptedBundle> {
+export async function encryptBundle(plaintext: Uint8Array): Promise<EncryptedBundle> {
   const key = randomBytes(KEY_BYTES);
   const iv = randomBytes(IV_BYTES);
-  const cryptoKey = await subtle.importKey(
-    "raw",
-    key,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt"],
-  );
+  const cryptoKey = await subtle.importKey("raw", key, { name: "AES-GCM", length: 256 }, false, [
+    "encrypt",
+  ]);
   const ciphertext = new Uint8Array(
     await subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, plaintext),
   );
@@ -46,14 +40,8 @@ export async function decryptBundle(
 ): Promise<Uint8Array> {
   if (key.byteLength !== KEY_BYTES) throw new Error(`expected ${KEY_BYTES}-byte key`);
   if (iv.byteLength !== IV_BYTES) throw new Error(`expected ${IV_BYTES}-byte IV`);
-  const cryptoKey = await subtle.importKey(
-    "raw",
-    key,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"],
-  );
-  return new Uint8Array(
-    await subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext),
-  );
+  const cryptoKey = await subtle.importKey("raw", key, { name: "AES-GCM", length: 256 }, false, [
+    "decrypt",
+  ]);
+  return new Uint8Array(await subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext));
 }

@@ -34,12 +34,7 @@ export function decodeAntibody(payload: Uint8Array): Antibody {
   return deserializeBigints(ab) as unknown as Antibody;
 }
 
-const BIGINT_FIELDS = new Set([
-  "stakeAmount",
-  "stakeLockUntil",
-  "expiresAt",
-  "createdAt",
-]);
+const BIGINT_FIELDS = new Set(["stakeAmount", "stakeLockUntil", "expiresAt", "createdAt"]);
 
 function serializeBigints(value: unknown): Record<string, unknown> {
   return Object.fromEntries(

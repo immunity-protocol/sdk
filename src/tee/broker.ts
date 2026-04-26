@@ -57,10 +57,10 @@ export async function initTeeBroker(opts: TeeBrokerOptions): Promise<TeeBroker> 
   const services = await broker.inference.listService();
   const candidate =
     (opts.preferredProvider
-      ? services.find(
-          (s) => s.provider.toLowerCase() === opts.preferredProvider?.toLowerCase(),
-        )
-      : undefined) ?? services.find((s) => s.serviceType === "chatbot") ?? services[0];
+      ? services.find((s) => s.provider.toLowerCase() === opts.preferredProvider?.toLowerCase())
+      : undefined) ??
+    services.find((s) => s.serviceType === "chatbot") ??
+    services[0];
   if (!candidate) throw new TeeAttestationError("no inference services discovered");
 
   const meta = await broker.inference.getServiceMetadata(candidate.provider);

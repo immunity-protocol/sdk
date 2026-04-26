@@ -2,7 +2,7 @@ import type { AntibodyCache } from "../cache/cache.js";
 import { hashGraphMatcher } from "../keccak/matchers/graph.js";
 import type { Address, Antibody, Hex32 } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
-import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
+import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * GraphMatcher: O(probe candidates) membership check across all GRAPH-type

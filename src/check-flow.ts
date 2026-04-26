@@ -20,7 +20,11 @@ export interface CheckFlowDeps {
   publisher: GossipPublisher;
   defaultChainId: number;
   policy: NovelThreatPolicy;
-  onEscalate?: (ctx: { reason: string; confidence: number; matched: { keccakId: string; immId: string }[] }) => Promise<boolean>;
+  onEscalate?: (ctx: {
+    reason: string;
+    confidence: number;
+    matched: { keccakId: string; immId: string }[];
+  }) => Promise<boolean>;
   /**
    * Hook invoked after a TEE verdict says block: builds the seed for the
    * auto-publish step. Pluggable so the Immunity facade can wire it to
@@ -116,17 +120,12 @@ export async function runCheck(
       });
       const minted: Antibody = synthAntibodyFor(pub.keccakId, pub.immSeq, deps.wallet, verdict);
       deps.cache.put(minted);
-      await deps.publisher.announce(minted).catch((e) =>
-        log.warn("gossip announce failed", e),
-      );
+      await deps.publisher.announce(minted).catch((e) => log.warn("gossip announce failed", e));
       mintedAntibody = minted;
     } catch (err) {
       log.warn("auto-publish failed; continuing as block-only", err);
     }
-    const settlement = await settleCheck(
-      deps.registry,
-      mintedAntibody?.keccakId ?? null,
-    );
+    const settlement = await settleCheck(deps.registry, mintedAntibody?.keccakId ?? null);
     return result(
       "block",
       settlement.txHash,
@@ -228,8 +227,6 @@ function synthAntibodyFor(
 
 const ZERO_BYTES32: Hex32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-function semanticFlavorCode(
-  flavor: "COUNTERPARTY" | "MANIPULATION" | "PROMPT_INJECTION",
-): number {
+function semanticFlavorCode(flavor: "COUNTERPARTY" | "MANIPULATION" | "PROMPT_INJECTION"): number {
   return flavor === "COUNTERPARTY" ? 0 : flavor === "MANIPULATION" ? 1 : 2;
 }

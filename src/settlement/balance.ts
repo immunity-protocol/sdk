@@ -15,10 +15,7 @@ export interface PublisherStats {
  * This reads the public `balances(address)` mapping (auto-generated getter
  * on Solidity public state vars), so it costs nothing.
  */
-export async function balanceOf(
-  registry: RegistryClient,
-  account: Address,
-): Promise<bigint> {
+export async function balanceOf(registry: RegistryClient, account: Address): Promise<bigint> {
   const v: bigint = await registry.contract.balances(normalizeAddress(account));
   return v;
 }
@@ -27,9 +24,7 @@ export async function publisherStats(
   registry: RegistryClient,
   publisher: Address,
 ): Promise<PublisherStats> {
-  const result = (await registry.contract.getPublisherStats(
-    normalizeAddress(publisher),
-  )) as {
+  const result = (await registry.contract.getPublisherStats(normalizeAddress(publisher))) as {
     totalStaked: bigint;
     totalEarned: bigint;
     publishedCount: bigint;

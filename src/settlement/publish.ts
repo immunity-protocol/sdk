@@ -100,7 +100,7 @@ export async function publish(
     normalizeAddress(publisher) as Address,
   );
 
-  let tx;
+  let tx: Awaited<ReturnType<typeof registry.contract.publish>>;
   try {
     tx = await registry.contract.publish(params);
   } catch (err) {

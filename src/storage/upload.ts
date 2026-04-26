@@ -1,6 +1,6 @@
 import { keccak256 } from "ethers";
 import type { Hex32 } from "../types/antibody.js";
-import { encryptBundle, type EncryptedBundle } from "./crypto.js";
+import { type EncryptedBundle, encryptBundle } from "./crypto.js";
 import type { StorageClient } from "./indexer.js";
 
 export interface ContextUpload {

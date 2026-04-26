@@ -2,7 +2,7 @@ import type { AntibodyCache } from "../cache/cache.js";
 import { hashSemanticMatcher } from "../keccak/matchers/semantic.js";
 import type { Antibody, Hex32 } from "../types/antibody.js";
 import type { CheckContext } from "../types/context.js";
-import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
+import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * SemanticMatcher: v1 marker-substring scan.

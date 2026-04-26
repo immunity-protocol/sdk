@@ -3,7 +3,7 @@ import type { AntibodyCache } from "../cache/cache.js";
 import { hashBytecodeMatcher } from "../keccak/matchers/bytecode.js";
 import type { Address, Antibody, Hex32 } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
-import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
+import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * Resolves the runtime bytecode at a given (chainId, address). The matcher

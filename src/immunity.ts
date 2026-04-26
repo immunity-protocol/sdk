@@ -1,10 +1,19 @@
 import { Gossip } from "axl-pubsub";
 import { AntibodyCache } from "./cache/cache.js";
 import { runCheck } from "./check-flow.js";
+import { GossipPublisher } from "./gossip/publisher.js";
+import { GossipSubscriber } from "./gossip/subscriber.js";
+import { AddressMatcher } from "./matchers/address.js";
+import { BytecodeMatcher, type CodeFetcher } from "./matchers/bytecode.js";
+import { CallPatternMatcher } from "./matchers/call-pattern.js";
+import { GraphMatcher } from "./matchers/graph.js";
+import { MatcherRegistry } from "./matchers/matcher.js";
+import { SemanticMatcher } from "./matchers/semantic.js";
+import { resolveNetwork } from "./network.js";
 import {
+  type PublisherStats,
   balanceOf as balanceOfRegistry,
   publisherStats as publisherStatsRegistry,
-  type PublisherStats,
 } from "./settlement/balance.js";
 import {
   type ApproveMode,
@@ -13,31 +22,19 @@ import {
 } from "./settlement/deposit.js";
 import { mintTestUsdc as mintTestUsdcImpl } from "./settlement/mint-test-usdc.js";
 import {
-  publish as publishAntibody,
   type PublishInput,
   type PublishResult,
+  publish as publishAntibody,
 } from "./settlement/publish.js";
-import { sweepExpired, type SweepResult } from "./settlement/sweep.js";
+import { getAntibody as getAntibodyById, getAntibodyByImmSeq } from "./settlement/read-antibody.js";
+import { type RegistryClient, createRegistryClient } from "./settlement/registry-client.js";
+import { type SweepResult, sweepExpired } from "./settlement/sweep.js";
+import { type UsdcClient, createUsdcClient } from "./settlement/usdc-client.js";
 import type { Antibody, Hex32 } from "./types/antibody.js";
-import {
-  getAntibody as getAntibodyById,
-  getAntibodyByImmSeq,
-} from "./settlement/read-antibody.js";
-import type { CheckOptions, CheckResult } from "./types/check.js";
-import type { CheckContext, ProposedTx } from "./types/context.js";
-import { AddressMatcher } from "./matchers/address.js";
-import { BytecodeMatcher, type CodeFetcher } from "./matchers/bytecode.js";
-import { CallPatternMatcher } from "./matchers/call-pattern.js";
-import { GraphMatcher } from "./matchers/graph.js";
-import { MatcherRegistry } from "./matchers/matcher.js";
-import { SemanticMatcher } from "./matchers/semantic.js";
-import { GossipPublisher } from "./gossip/publisher.js";
-import { GossipSubscriber } from "./gossip/subscriber.js";
-import { resolveNetwork } from "./network.js";
-import { createRegistryClient, type RegistryClient } from "./settlement/registry-client.js";
-import { createUsdcClient, type UsdcClient } from "./settlement/usdc-client.js";
 import type { Address } from "./types/antibody.js";
+import type { CheckOptions, CheckResult } from "./types/check.js";
 import type { ImmunityConfig, NetworkConfig } from "./types/config.js";
+import type { CheckContext, ProposedTx } from "./types/context.js";
 import { MissingConfigError, NotStartedError } from "./types/errors.js";
 import { createLogger } from "./util/logger.js";
 import { resolveSigner } from "./wallet/signer.js";
@@ -110,9 +107,7 @@ export class Immunity {
 
     this.#gossip = new Gossip({
       axlUrl: this.#config.axlUrl,
-      ...(this.#config.axlIdentityPath
-        ? { privateKeyPath: this.#config.axlIdentityPath }
-        : {}),
+      ...(this.#config.axlIdentityPath ? { privateKeyPath: this.#config.axlIdentityPath } : {}),
     });
     await this.#gossip.start();
     this.#subscriber = new GossipSubscriber(this.#gossip, this.#cache);

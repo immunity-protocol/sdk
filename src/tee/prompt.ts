@@ -54,8 +54,7 @@ export function distillBundle(tx: ProposedTx | null, ctx: CheckContext): string 
       `SOURCES (${sources.length}):\n${sources
         .slice(0, 6)
         .map(
-          (s) =>
-            `${s.url}${s.extractedText ? `\n  text: ${truncate(s.extractedText, 320)}` : ""}`,
+          (s) => `${s.url}${s.extractedText ? `\n  text: ${truncate(s.extractedText, 320)}` : ""}`,
         )
         .join("\n")}`,
     );

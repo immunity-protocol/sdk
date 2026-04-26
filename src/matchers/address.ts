@@ -2,7 +2,7 @@ import type { AntibodyCache } from "../cache/cache.js";
 import { hashAddressMatcher } from "../keccak/matchers/address.js";
 import type { Address, Antibody } from "../types/antibody.js";
 import { chainAddressKey } from "../util/address.js";
-import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
+import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * AddressMatcher: O(1) lookup by `(chainId, address)` against ADDRESS-type

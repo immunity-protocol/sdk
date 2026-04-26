@@ -41,15 +41,12 @@ export function parseVerdict(raw: string): RawVerdict {
   }
   if (!isObject(json)) throw new TeeResponseError("response JSON is not an object");
 
-  const verdict = enumOrThrow<RawVerdict["verdict"]>(
-    json.verdict,
-    VERDICT_KEYS,
-    "verdict",
-  );
+  const verdict = enumOrThrow<RawVerdict["verdict"]>(json.verdict, VERDICT_KEYS, "verdict");
   const abType = enumOrThrow<AntibodyType>(json.abType, ABTYPE_KEYS, "abType");
-  const flavor = json.flavor === null || json.flavor === undefined
-    ? null
-    : enumOrThrow<SemanticFlavor>(json.flavor, FLAVOR_KEYS, "flavor");
+  const flavor =
+    json.flavor === null || json.flavor === undefined
+      ? null
+      : enumOrThrow<SemanticFlavor>(json.flavor, FLAVOR_KEYS, "flavor");
   if (abType !== "SEMANTIC" && flavor !== null) {
     throw new TeeResponseError(`flavor must be null when abType is ${abType}`);
   }
@@ -77,11 +74,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
-function enumOrThrow<T extends string>(
-  value: unknown,
-  allowed: Set<string>,
-  field: string,
-): T {
+function enumOrThrow<T extends string>(value: unknown, allowed: Set<string>, field: string): T {
   if (typeof value !== "string" || !allowed.has(value)) {
     throw new TeeResponseError(`invalid ${field}: ${JSON.stringify(value)}`);
   }
