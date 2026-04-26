@@ -2,10 +2,27 @@ import { Gossip } from "axl-pubsub";
 import { AntibodyCache } from "./cache/cache.js";
 import { runCheck } from "./check-flow.js";
 import {
+  balanceOf as balanceOfRegistry,
+  publisherStats as publisherStatsRegistry,
+  type PublisherStats,
+} from "./settlement/balance.js";
+import {
+  type ApproveMode,
+  deposit as depositToRegistry,
+  withdraw as withdrawFromRegistry,
+} from "./settlement/deposit.js";
+import { mintTestUsdc as mintTestUsdcImpl } from "./settlement/mint-test-usdc.js";
+import {
   publish as publishAntibody,
   type PublishInput,
   type PublishResult,
 } from "./settlement/publish.js";
+import { sweepExpired, type SweepResult } from "./settlement/sweep.js";
+import type { Antibody, Hex32 } from "./types/antibody.js";
+import {
+  getAntibody as getAntibodyById,
+  getAntibodyByImmSeq,
+} from "./settlement/read-antibody.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
 import type { CheckContext, ProposedTx } from "./types/context.js";
 import { AddressMatcher } from "./matchers/address.js";
@@ -142,6 +159,50 @@ export class Immunity {
   async publish(input: PublishInput): Promise<PublishResult> {
     const s = this.ensureStarted();
     return publishAntibody(s.registry, s.wallet, input);
+  }
+
+  async deposit(
+    amount: bigint,
+    approveMode: ApproveMode = "exact",
+  ): Promise<{ depositTx: Hex32; approveTx?: Hex32 }> {
+    const s = this.ensureStarted();
+    return depositToRegistry(s.registry, s.usdc, s.wallet, amount, approveMode);
+  }
+
+  async withdraw(amount: bigint): Promise<Hex32> {
+    const s = this.ensureStarted();
+    return withdrawFromRegistry(s.registry, amount);
+  }
+
+  async balance(): Promise<bigint> {
+    const s = this.ensureStarted();
+    return balanceOfRegistry(s.registry, s.wallet);
+  }
+
+  async publisherStats(): Promise<PublisherStats> {
+    const s = this.ensureStarted();
+    return publisherStatsRegistry(s.registry, s.wallet);
+  }
+
+  async getAntibody(idOrSeq: Hex32 | number): Promise<Antibody> {
+    const s = this.ensureStarted();
+    return typeof idOrSeq === "number"
+      ? getAntibodyByImmSeq(s.registry, idOrSeq)
+      : getAntibodyById(s.registry, idOrSeq);
+  }
+
+  async sweep(): Promise<SweepResult> {
+    const s = this.ensureStarted();
+    return sweepExpired(s.registry);
+  }
+
+  /**
+   * Testnet bootstrap: mint MockUSDC to the operator's wallet. Throws
+   * runtime-side if pointed at a non-Mock USDC address.
+   */
+  async mintTestUsdc(amount: bigint): Promise<Hex32> {
+    const s = this.ensureStarted();
+    return mintTestUsdcImpl(s.usdc, s.wallet, amount);
   }
 
   /** Internal accessors for the facade's downstream methods. */
