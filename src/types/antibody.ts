@@ -55,6 +55,36 @@ export type SemanticFlavor = keyof typeof SemanticFlavorValue;
 export type SemanticFlavorCode = (typeof SemanticFlavorValue)[SemanticFlavor];
 
 /**
+ * Original matcher inputs the publisher used to derive `primaryMatcherHash`.
+ *
+ * Travels alongside the antibody on gossip envelopes so subscribers can
+ * rebuild their type-specific lookup indices without re-querying the chain.
+ * Optional because antibodies hydrated directly from chain reads do not
+ * have it (the contract stores only the hash).
+ */
+export type AntibodySeed =
+  | { abType: "ADDRESS"; chainId: number; target: Address }
+  | {
+      abType: "CALL_PATTERN";
+      chainId: number;
+      target: Address;
+      selector: `0x${string}`;
+      argsTemplate: `0x${string}`;
+    }
+  | { abType: "BYTECODE"; bytecodeHash: Hex32 }
+  | {
+      abType: "GRAPH";
+      chainId: number;
+      taintedAddresses: Address[];
+      taintSetId: Hex32;
+    }
+  | {
+      abType: "SEMANTIC";
+      flavor: SemanticFlavor;
+      pattern: { kind: "hash"; value: Hex32 } | { kind: "marker"; value: string };
+    };
+
+/**
  * Stored antibody envelope.
  *
  * Numeric fields are kept narrow where the contract bound is small
@@ -83,6 +113,7 @@ export interface Antibody {
   expiresAt: bigint;
   createdAt: bigint;
   isSeeded: boolean;
+  seed?: AntibodySeed;
 }
 
 /**
