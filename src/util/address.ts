@@ -1,6 +1,6 @@
 import type { Address } from "../types/antibody.js";
 
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const ADDRESS_RE = /^0[xX][0-9a-fA-F]{40}$/;
 
 /**
  * Validate and lowercase-normalize an EVM address. Returns the canonical
