@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { JsonRpcProvider, Wallet } from "ethers";
 import { afterAll, describe, expect, it } from "vitest";
+import type { AntibodyCache } from "../../src/cache/cache.js";
 import { Immunity, TESTNET } from "../../src/index.js";
 
 /**
@@ -27,20 +28,32 @@ describe.skipIf(!SHOULD_RUN)("two-node gossip propagation", () => {
     network: "testnet",
     axlUrl: PUB_URL!,
     novelThreatPolicy: "trust-cache",
+    ...(process.env.AXL_IDENTITY_PUBLISHER
+      ? { axlIdentityPath: process.env.AXL_IDENTITY_PUBLISHER }
+      : {}),
   });
   const subscriber = new Immunity({
     wallet: signer,
     network: "testnet",
     axlUrl: SUB_URL!,
     novelThreatPolicy: "trust-cache",
+    ...(process.env.AXL_IDENTITY_SUBSCRIBER
+      ? { axlIdentityPath: process.env.AXL_IDENTITY_SUBSCRIBER }
+      : {}),
   });
 
   afterAll(async () => {
     await Promise.allSettled([publisher.stop(), subscriber.stop()]);
   });
 
-  it("publishes on node A and observes on node B within 5s", async () => {
+  it("publishes on node A and observes on node B via cache", async () => {
     await Promise.all([publisher.start(), subscriber.start()]);
+
+    // Let sub_ad propagate across the mesh before publishing. axl-pubsub
+    // broadcasts subscription announcements on start; the publisher needs
+    // to learn about the subscriber's interest in immunity.antibody.* via
+    // the AXL routing fabric before it will fan out.
+    await sleep(3_000);
 
     const target = randomAddress();
     const pub = await publisher.publish({
@@ -50,25 +63,25 @@ describe.skipIf(!SHOULD_RUN)("two-node gossip propagation", () => {
       severity: 80,
     });
 
-    // Subscriber's gossip subscription should populate within a few seconds
-    // (axl-pubsub default poll interval is 25ms, advertise is 30s but we
-    // already advertised on start). Probe locally by seeing if a check
-    // against the published target hits the cache.
-    const start = Date.now();
-    let hit = false;
-    while (Date.now() - start < 5_000) {
-      const r = await subscriber.check(
-        { to: target, chainId: TESTNET.chainId },
-        {},
-      );
-      if (!r.allowed && r.antibodies.some((a) => a.keccakId === pub.keccakId)) {
-        hit = true;
-        break;
-      }
-      await sleep(200);
+    // Probe the subscriber's local cache directly. Each `check()` would
+    // submit a chain settlement and steal the time budget; the cache lookup
+    // is free.
+    const cache = (
+      subscriber as unknown as { ensureStarted: () => { cache: AntibodyCache } }
+    ).ensureStarted().cache;
+
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      if (cache.has(pub.keccakId)) break;
+      await sleep(250);
     }
-    expect(hit).toBe(true);
-  }, 60_000);
+    expect(cache.has(pub.keccakId)).toBe(true);
+
+    // Cache hit produces a block when the matcher resolves it.
+    const r = await subscriber.check({ to: target, chainId: TESTNET.chainId }, {});
+    expect(r.allowed).toBe(false);
+    expect(r.antibodies.some((a) => a.keccakId === pub.keccakId)).toBe(true);
+  }, 90_000);
 });
 
 function randomAddress(): `0x${string}` {
