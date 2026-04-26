@@ -102,6 +102,14 @@ export async function createTeeVerifier(
       log.warn("verdict parse rejected; treating as benign", err);
       return null;
     }
+    log.info("TEE verdict parsed", {
+      verdict: raw.verdict,
+      abType: raw.abType,
+      flavor: raw.flavor,
+      confidence: raw.confidence,
+      severity: raw.severity,
+      reasoning: raw.reasoning?.slice(0, 200),
+    });
 
     const decision = decideFromVerdict(raw, opts.blockThreshold, opts.escalateThreshold);
     const seed = seedFromTx(raw, tx, ctx, opts.defaultChainId);
