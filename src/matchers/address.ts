@@ -6,23 +6,24 @@ import type { Matcher, MatchHit, MatchProbe } from "./matcher.js";
 
 /**
  * AddressMatcher: O(1) lookup by `(chainId, address)` against ADDRESS-type
- * antibodies in the cache. Resolves the proposed tx's `to` and the optional
- * counterparty id (if it parses as an EVM address).
+ * antibodies in the cache. Probes the proposed tx's `to` and the optional
+ * counterparty id when it parses as an EVM address.
  *
- * Index is built from the canonical primary-matcher hash on cache `put`,
- * so the matcher does not need to know how the publisher composed the
- * matcher input: any antibody whose `primaryMatcherHash` equals
- * `hashAddressMatcher({chainId, target})` for a probed pair will hit.
+ * The index key comes from `Antibody.seed` (carried on gossip envelopes).
+ * Antibodies hydrated bare from chain reads have no seed and therefore
+ * cannot be indexed; they only match if a future gossip arrival fills in
+ * the seed for the same `keccakId`. We verify the seed by recomputing the
+ * primary-matcher hash and rejecting any mismatch.
  */
 export class AddressMatcher implements Matcher {
   readonly name = "ADDRESS";
   readonly priority = 10;
 
   private readonly index = new Map<string, Antibody>();
-  private readonly chainId: number;
+  private readonly defaultChainId: number;
 
-  constructor(chainId: number) {
-    this.chainId = chainId;
+  constructor(defaultChainId: number) {
+    this.defaultChainId = defaultChainId;
   }
 
   attach(cache: AntibodyCache): void {
@@ -34,9 +35,9 @@ export class AddressMatcher implements Matcher {
   }
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
-    const candidates = this.candidateAddresses(probe);
-    for (const addr of candidates) {
-      const key = chainAddressKey(this.probeChainId(probe), addr);
+    const chainId = probe.tx?.chainId ?? this.defaultChainId;
+    for (const addr of this.candidateAddresses(probe)) {
+      const key = chainAddressKey(chainId, addr);
       const ab = this.index.get(key);
       if (ab && ab.status === "ACTIVE") {
         return {
@@ -49,10 +50,6 @@ export class AddressMatcher implements Matcher {
     return null;
   }
 
-  private probeChainId(probe: MatchProbe): number {
-    return probe.tx?.chainId ?? this.chainId;
-  }
-
   private candidateAddresses(probe: MatchProbe): Address[] {
     const out: Address[] = [];
     if (probe.tx?.to) out.push(probe.tx.to);
@@ -62,41 +59,19 @@ export class AddressMatcher implements Matcher {
   }
 
   private tryIndex(ab: Antibody): void {
-    if (ab.abType !== "ADDRESS") return;
-    const reconstructed = this.tryReverseLookup(ab);
-    if (reconstructed) this.index.set(reconstructed.key, ab);
+    const key = this.indexKey(ab);
+    if (key) this.index.set(key, ab);
   }
 
   private tryUnindex(ab: Antibody): void {
-    if (ab.abType !== "ADDRESS") return;
-    const reconstructed = this.tryReverseLookup(ab);
-    if (reconstructed) this.index.delete(reconstructed.key);
+    const key = this.indexKey(ab);
+    if (key) this.index.delete(key);
   }
 
-  /**
-   * The cache stores `primaryMatcherHash` only; we need the (chainId, address)
-   * pair to build the index key. Antibodies coming through the SDK's own
-   * publish path attach the raw matcher data via the gossip envelope. For
-   * direct-from-chain antibodies, the matcher relies on the gossip codec
-   * having stashed the source pair into a side-channel (`matcherSeed` on
-   * the gossip envelope).
-   *
-   * For now: trust that the gossip envelope decoder writes a `__addr_seed`
-   * attribute onto antibodies. If absent, the matcher cannot index until
-   * the SDK observes a probe with that exact `primaryMatcherHash`. This is
-   * implemented in `gossip/envelope.ts` once that lands.
-   */
-  private tryReverseLookup(
-    ab: Antibody,
-  ): { key: string; chainId: number; address: Address } | null {
-    const seed = (ab as Antibody & { __addrSeed?: { chainId: number; address: Address } })
-      .__addrSeed;
-    if (!seed) return null;
-    const reconstructedHash = hashAddressMatcher({
-      chainId: seed.chainId,
-      target: seed.address,
-    });
-    if (reconstructedHash !== ab.primaryMatcherHash) return null;
-    return { key: chainAddressKey(seed.chainId, seed.address), chainId: seed.chainId, address: seed.address };
+  private indexKey(ab: Antibody): string | null {
+    if (ab.abType !== "ADDRESS" || !ab.seed || ab.seed.abType !== "ADDRESS") return null;
+    const expected = hashAddressMatcher({ chainId: ab.seed.chainId, target: ab.seed.target });
+    if (expected !== ab.primaryMatcherHash) return null;
+    return chainAddressKey(ab.seed.chainId, ab.seed.target);
   }
 }
