@@ -110,26 +110,12 @@ export async function runCheck(
   }
 
   if (verdict.block && verdict.publishSeed) {
-    let mintedAntibody: Antibody | null = null;
-    try {
-      const pub = await publishAntibody(deps.registry, deps.wallet, {
-        seed: verdict.publishSeed,
-        verdict: "MALICIOUS",
-        confidence: verdict.confidence,
-        severity: verdict.severity,
-      });
-      const minted: Antibody = synthAntibodyFor(pub.keccakId, pub.immSeq, deps.wallet, verdict);
-      deps.cache.put(minted);
-      await deps.publisher.announce(minted).catch((e) => log.warn("gossip announce failed", e));
-      mintedAntibody = minted;
-    } catch (err) {
-      log.warn("auto-publish failed; continuing as block-only", err);
-    }
-    const settlement = await settleCheck(deps.registry, mintedAntibody?.keccakId ?? null);
+    const minted = await mintAndAnnounce(deps, verdict);
+    const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null);
     return result(
       "block",
       settlement.txHash,
-      mintedAntibody ? [mintedAntibody] : [],
+      minted ? [minted] : [],
       verdict.reason,
       "tee",
       verdict.confidence,
@@ -139,16 +125,47 @@ export async function runCheck(
 
   // escalate path
   const allowed = await runEscalate(deps, verdict);
-  const settlement = await settleCheck(deps.registry, null);
+  // Operator-confirmed threat: when the operator denies the action AND the
+  // verifier produced a derivable seed, mint+gossip the antibody. The
+  // operator's deny is the consent signal that this matcher belongs on the
+  // network; without it we'd be flooding the network with low-confidence
+  // antibodies. With it, escalate-deny becomes a quality-gated publish.
+  const minted =
+    !allowed && verdict.publishSeed ? await mintAndAnnounce(deps, verdict) : null;
+  const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null);
   return result(
     allowed ? "allow" : "block",
     settlement.txHash,
-    [],
+    minted ? [minted] : [],
     `${verdict.reason} (operator ${allowed ? "allowed" : "blocked"})`,
     "tee",
     verdict.confidence,
     false,
   );
+}
+
+async function mintAndAnnounce(
+  deps: CheckFlowDeps,
+  verdict: TeeVerifyOutcome,
+): Promise<Antibody | null> {
+  if (!verdict.publishSeed) return null;
+  try {
+    const pub = await publishAntibody(deps.registry, deps.wallet, {
+      seed: verdict.publishSeed,
+      verdict: "MALICIOUS",
+      confidence: verdict.confidence,
+      severity: verdict.severity,
+    });
+    const minted = synthAntibodyFor(pub.keccakId, pub.immSeq, deps.wallet, verdict);
+    deps.cache.put(minted);
+    await deps.publisher
+      .announce(minted)
+      .catch((e) => log.warn("gossip announce failed", e));
+    return minted;
+  } catch (err) {
+    log.warn("auto-publish failed; continuing without antibody", err);
+    return null;
+  }
 }
 
 async function runEscalate(deps: CheckFlowDeps, verdict: TeeVerifyOutcome): Promise<boolean> {
