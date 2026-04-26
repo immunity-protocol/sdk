@@ -47,10 +47,26 @@ export function seedFromTx(
         argsTemplate,
       };
     }
-    // BYTECODE: would require an extcodehash fetch we don't do here. v2.
-    // GRAPH: requires a taint-set discovery phase. v2.
-    // SEMANTIC: cannot derive a marker from raw LLM output without
-    // re-introducing injection risk. v2 will use an off-LLM marker source.
+    // BYTECODE / GRAPH / SEMANTIC: when the LLM picks one of these abTypes,
+    // we cannot mint an antibody at that granularity safely in v1 (BYTECODE
+    // and GRAPH need off-chain enrichment; SEMANTIC needs an off-LLM marker
+    // source to avoid injection risk). However, if the proposed action has
+    // a concrete `tx.to`, the address IS an observable, deterministic target
+    // the network will care about: the agent is about to send to it, and
+    // blocking that address protects everyone. Fall back to ADDRESS using
+    // tx.to as the target. The fallback is still injection-safe because
+    // tx.to is supplied by the call site, not by anything the LLM said.
+    case "BYTECODE":
+    case "GRAPH":
+    case "SEMANTIC": {
+      const target = pickAddressTarget(tx, ctx);
+      if (!target) return null;
+      return {
+        abType: "ADDRESS",
+        chainId: tx?.chainId ?? defaultChainId,
+        target,
+      };
+    }
     default:
       return null;
   }
