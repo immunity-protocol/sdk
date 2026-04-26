@@ -1,0 +1,34 @@
+name: immunity-axl-mesh
+
+services:
+  alice:
+    image: axl-pubsub-axl:local
+    container_name: immunity-axl-alice
+    hostname: alice
+    command: ["-config", "/configs/alice.json"]
+    volumes:
+      - ./configs:/configs:ro
+      - ./keys:/keys:ro
+    ports:
+      - "9002:9002"
+    networks:
+      - immunity-axl
+
+  bob:
+    image: axl-pubsub-axl:local
+    depends_on:
+      - alice
+    container_name: immunity-axl-bob
+    hostname: bob
+    command: ["-config", "/configs/bob.json"]
+    volumes:
+      - ./configs:/configs:ro
+      - ./keys:/keys:ro
+    ports:
+      - "9012:9002"
+    networks:
+      - immunity-axl
+
+networks:
+  immunity-axl:
+    driver: bridge
