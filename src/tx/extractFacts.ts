@@ -25,6 +25,16 @@ const SELECTORS = {
   transfer:     "0xa9059cbb",
   transferFrom: "0x23b872dd",
   approve:      "0x095ea7b3",
+  // Uniswap V2 router
+  v2_swapExactTokensForTokens: "0x38ed1739",
+  v2_swapExactETHForTokens:    "0x7ff36ab5",
+  v2_swapExactTokensForETH:    "0x18cbafe5",
+  // Uniswap V3 SwapRouter (legacy, with deadline)
+  v3_exactInputSingleDeadline: "0x414bf389",
+  v3_exactInputDeadline:       "0xc04b8d59",
+  // Uniswap V3 SwapRouter02 (current, no deadline)
+  v3_exactInputSingle:         "0x04e45aaf",
+  v3_exactInput:               "0xb858183f",
 } as const;
 
 const ERC20_INTERFACE = new Interface([
@@ -32,6 +42,34 @@ const ERC20_INTERFACE = new Interface([
   "function transferFrom(address from, address to, uint256 value)",
   "function approve(address spender, uint256 value)",
 ]);
+
+const UNI_V2_INTERFACE = new Interface([
+  "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline)",
+  "function swapExactETHForTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable",
+  "function swapExactTokensForETH(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline)",
+]);
+
+const UNI_V3_02_INTERFACE = new Interface([
+  // SwapRouter02 — no deadline in struct
+  "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96))",
+  "function exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum))",
+]);
+
+const UNI_V3_INTERFACE = new Interface([
+  // SwapRouter — has deadline in struct
+  "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96))",
+  "function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum))",
+]);
+
+/** Extract the first (input) token from a packed Uniswap V3 path. */
+function firstTokenInPath(path: string): Address {
+  // path = 0x | tokenIn(20) | fee(3) | tokenMid(20) | fee(3) | tokenOut(20) | ...
+  // 20 bytes = 40 hex chars after the 0x prefix.
+  if (!path.startsWith("0x") || path.length < 42) {
+    throw new Error("v3 path too short");
+  }
+  return `0x${path.slice(2, 42)}` as Address;
+}
 
 /**
  * Pure transaction-fact extractor. No network calls, no async work.
@@ -91,6 +129,74 @@ export function extractFacts(tx: ProposedTx | null): TxFacts {
       return {
         tokenAddress: tx.to,
         tokenAmount:  BigInt(decoded[1]),
+        originChainId: chainId,
+      };
+    }
+
+    // ---- Uniswap V2 router ----
+    if (selector === SELECTORS.v2_swapExactTokensForTokens) {
+      const decoded = UNI_V2_INTERFACE.decodeFunctionData("swapExactTokensForTokens", data);
+      const path = decoded[2] as string[];
+      return {
+        tokenAddress: path[0] as Address,
+        tokenAmount:  BigInt(decoded[0]),
+        originChainId: chainId,
+      };
+    }
+    if (selector === SELECTORS.v2_swapExactTokensForETH) {
+      const decoded = UNI_V2_INTERFACE.decodeFunctionData("swapExactTokensForETH", data);
+      const path = decoded[2] as string[];
+      return {
+        tokenAddress: path[0] as Address,
+        tokenAmount:  BigInt(decoded[0]),
+        originChainId: chainId,
+      };
+    }
+    if (selector === SELECTORS.v2_swapExactETHForTokens) {
+      // Native ETH → token. tokenAmount comes from msg.value.
+      return {
+        tokenAddress: ZERO_ADDRESS,
+        tokenAmount:  tx.value ?? 0n,
+        originChainId: chainId,
+      };
+    }
+
+    // ---- Uniswap V3 SwapRouter02 (no deadline) ----
+    if (selector === SELECTORS.v3_exactInputSingle) {
+      const decoded = UNI_V3_02_INTERFACE.decodeFunctionData("exactInputSingle", data);
+      const params = decoded[0]; // tuple
+      return {
+        tokenAddress: params[0] as Address,   // tokenIn
+        tokenAmount:  BigInt(params[4]),       // amountIn
+        originChainId: chainId,
+      };
+    }
+    if (selector === SELECTORS.v3_exactInput) {
+      const decoded = UNI_V3_02_INTERFACE.decodeFunctionData("exactInput", data);
+      const params = decoded[0];
+      return {
+        tokenAddress: firstTokenInPath(params[0] as string),
+        tokenAmount:  BigInt(params[2]),       // amountIn
+        originChainId: chainId,
+      };
+    }
+
+    // ---- Uniswap V3 SwapRouter (with deadline) ----
+    if (selector === SELECTORS.v3_exactInputSingleDeadline) {
+      const decoded = UNI_V3_INTERFACE.decodeFunctionData("exactInputSingle", data);
+      const params = decoded[0];
+      return {
+        tokenAddress: params[0] as Address,
+        tokenAmount:  BigInt(params[5]),       // amountIn (deadline at index 4)
+        originChainId: chainId,
+      };
+    }
+    if (selector === SELECTORS.v3_exactInputDeadline) {
+      const decoded = UNI_V3_INTERFACE.decodeFunctionData("exactInput", data);
+      const params = decoded[0];
+      return {
+        tokenAddress: firstTokenInPath(params[0] as string),
+        tokenAmount:  BigInt(params[3]),       // amountIn (deadline at index 2)
         originChainId: chainId,
       };
     }
