@@ -7,13 +7,33 @@ import type { NovelThreatPolicy } from "./check.js";
  */
 export type NetworkPreset = "testnet" | "custom";
 
+/**
+ * Canonical per-network configuration. Every consumer of network state
+ * (Registry/USDC addresses, RPC, storage indexer, compute provider, AXL hubs)
+ * reads from this object — no hardcoded constants elsewhere in the SDK.
+ *
+ * All fields required so a redeploy is a single-file change. Extend this
+ * type rather than scattering new constants.
+ */
 export interface NetworkConfig {
+  /** Human-readable identifier, e.g. "galileo-testnet". */
+  name: string;
   chainId: number;
   rpcUrl: string;
   registryAddress: Address;
   usdcAddress: Address;
-  computeProvider?: Address;
-  storageIndexerUrl?: string;
+  /** Block explorer base URL (no trailing slash). */
+  blockExplorerUrl: string;
+  /** 0G Storage indexer used for envelope upload/download. */
+  storageIndexerUrl: string;
+  /** 0G Compute provider address that hosts the TEE inference model. */
+  computeProvider: Address;
+  /** TEE model identifier, e.g. "qwen-2.5-7b-instruct". */
+  computeModel: string;
+  /** AXL pubsub hub URIs the SDK can connect to (the gossip mesh). */
+  axlHubs: string[];
+  /** Mainnet RPC used for ENS reverse resolution of publisher addresses. */
+  ensRpcUrl: string;
 }
 
 export interface ConfidenceThresholds {

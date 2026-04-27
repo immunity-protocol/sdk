@@ -8,12 +8,17 @@ import { MissingConfigError } from "./types/errors.js";
  * Re-snapshot if a redeploy moves the Registry or MockUSDC addresses.
  */
 export const TESTNET: NetworkConfig = {
+  name: "galileo-testnet",
   chainId: 16602,
   rpcUrl: "https://evmrpc-testnet.0g.ai",
   registryAddress: "0x45Ee45Ca358b3fc9B1b245a8f1c1C3128caC8e48",
   usdcAddress: "0x2Aee1d140422C62AE23465596801C35f3Ce74F9E",
-  computeProvider: "0xa48f01287233509FD694a22Bf840225062E67836",
+  blockExplorerUrl: "https://chainscan-galileo.0g.ai",
   storageIndexerUrl: "https://indexer-storage-testnet-turbo.0g.ai",
+  computeProvider: "0xa48f01287233509FD694a22Bf840225062E67836",
+  computeModel: "qwen-2.5-7b-instruct",
+  axlHubs: [],
+  ensRpcUrl: "https://eth.llamarpc.com",
 };
 
 export function resolveNetwork(input: NetworkPreset | NetworkConfig | undefined): NetworkConfig {
