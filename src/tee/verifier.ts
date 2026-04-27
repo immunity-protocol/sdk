@@ -113,8 +113,7 @@ export async function createTeeVerifier(
 
     const decision = decideFromVerdict(raw, opts.blockThreshold, opts.escalateThreshold);
     const seed = seedFromTx(raw, tx, ctx, opts.defaultChainId);
-
-    return {
+    const outcome = {
       block: decision.treatAsBlock && seed !== null,
       escalate: decision.treatAsEscalate || (decision.treatAsBlock && seed === null),
       reason:
@@ -124,6 +123,14 @@ export async function createTeeVerifier(
       severity: raw.severity,
       ...(seed ? { publishSeed: seed } : {}),
     };
+    log.info("TEE outcome", {
+      block: outcome.block,
+      escalate: outcome.escalate,
+      seedDerived: seed !== null,
+      treatAsBlock: decision.treatAsBlock,
+      treatAsEscalate: decision.treatAsEscalate,
+    });
+    return outcome;
   };
 }
 
