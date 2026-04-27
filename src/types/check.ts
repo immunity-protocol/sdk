@@ -1,4 +1,5 @@
 import type { Antibody, Hex32 } from "./antibody.js";
+import type { TxFacts } from "../tx/extractFacts.js";
 
 /**
  * Decision classes returned by `check()`.
@@ -30,6 +31,13 @@ export interface CheckResult {
   checkId: Hex32 | null;
   /** True when an `allow` result came from cache miss with no TEE verification. */
   novel: boolean;
+  /**
+   * Transaction facts (token, amount, origin chain) the SDK extracted from
+   * the proposed tx and submitted on chain via `Registry.check()` for the
+   * indexer's value-at-risk pricing. Read-only — operators cannot override.
+   * All-zero when the tx is null or its calldata isn't recognized.
+   */
+  txFacts: TxFacts;
 }
 
 export interface CheckOptions {

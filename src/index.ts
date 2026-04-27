@@ -39,6 +39,9 @@ export type {
   NovelThreatPolicy,
 } from "./types/check.js";
 
+export { extractFacts } from "./tx/extractFacts.js";
+export type { TxFacts } from "./tx/extractFacts.js";
+
 export type {
   ConfidenceThresholds,
   EscalateHandler,

@@ -4,6 +4,7 @@ import type { MatcherRegistry } from "./matchers/matcher.js";
 import { settleCheck } from "./settlement/check.js";
 import { publish as publishAntibody } from "./settlement/publish.js";
 import type { RegistryClient } from "./settlement/registry-client.js";
+import { extractFacts, type TxFacts } from "./tx/extractFacts.js";
 import type { Address, Antibody, AntibodySeed, Hex32 } from "./types/antibody.js";
 import type { CheckOptions, CheckResult, NovelThreatPolicy } from "./types/check.js";
 import type { CheckContext, ProposedTx } from "./types/context.js";
@@ -51,10 +52,12 @@ export async function runCheck(
   deps: CheckFlowDeps,
 ): Promise<CheckResult> {
   const policy = options?.policy ?? deps.policy;
+  // Extracted once at the top so every return path carries the same facts.
+  const txFacts = extractFacts(tx);
 
   if (!tx && isContextEmpty(context)) {
     log.debug("short-circuit allow: no actionable input");
-    return result("allow", null, [], "no actionable input", "policy", 0, false);
+    return result("allow", null, [], "no actionable input", "policy", 0, false, txFacts);
   }
 
   const hit = await deps.matchers.matchFirst({ tx, context });
@@ -68,6 +71,7 @@ export async function runCheck(
       "cache",
       hit.antibody.confidence,
       false,
+      txFacts,
     );
   }
 
@@ -81,6 +85,7 @@ export async function runCheck(
       "policy",
       0,
       false,
+      txFacts,
     );
   }
 
@@ -91,7 +96,7 @@ export async function runCheck(
         ? "trust-cache policy: novel input allowed without verification"
         : "verify policy requested but TEE not configured; allowing (novel)";
     if (!deps.teeVerify) log.warn(reason);
-    return result("allow", settlement.txHash, [], reason, "policy", 0, true);
+    return result("allow", settlement.txHash, [], reason, "policy", 0, true, txFacts);
   }
 
   // verify mode: ask the TEE
@@ -106,6 +111,7 @@ export async function runCheck(
       "tee",
       verdict?.confidence ?? 0,
       false,
+      txFacts,
     );
   }
 
@@ -120,6 +126,7 @@ export async function runCheck(
       "tee",
       verdict.confidence,
       false,
+      txFacts,
     );
   }
 
@@ -141,6 +148,7 @@ export async function runCheck(
     "tee",
     verdict.confidence,
     false,
+    txFacts,
   );
 }
 
@@ -195,6 +203,7 @@ function result(
   source: "cache" | "tee" | "policy",
   confidence: number,
   novel: boolean,
+  txFacts: TxFacts,
 ): CheckResult {
   return {
     allowed: decision === "allow",
@@ -205,6 +214,7 @@ function result(
     reason,
     checkId,
     novel,
+    txFacts,
   };
 }
 
