@@ -6,6 +6,7 @@ import { hashBytecodeMatcher } from "../../../src/keccak/matchers/bytecode.js";
 import { hashCallPatternMatcher } from "../../../src/keccak/matchers/call-pattern.js";
 import { hashGraphMatcher } from "../../../src/keccak/matchers/graph.js";
 import { hashSemanticMatcher } from "../../../src/keccak/matchers/semantic.js";
+import { TEST_CHAIN_ID } from "../../fixtures/network.js";
 
 const coder = AbiCoder.defaultAbiCoder();
 
@@ -68,7 +69,7 @@ describe("primary-matcher canonicalization", () => {
       target: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
     });
     const b = hashAddressMatcher({
-      chainId: 16602,
+      chainId: TEST_CHAIN_ID,
       target: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
     });
     expect(a).not.toBe(b);

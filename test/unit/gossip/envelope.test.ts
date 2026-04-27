@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { decodeAntibody, encodeAntibody } from "../../../src/gossip/envelope.js";
+import { TEST_CHAIN_ID } from "../../fixtures/network.js";
 import { buildAntibody } from "../matchers/fixtures.js";
 
 describe("gossip envelope round-trip", () => {
   it("round-trips an ADDRESS antibody including its seed", () => {
     const ab = buildAntibody({
       abType: "ADDRESS",
-      chainId: 16602,
+      chainId: TEST_CHAIN_ID,
       target: "0x000000000000000000000000000000000000DEAD",
     });
     ab.stakeAmount = 1_000_000n;
