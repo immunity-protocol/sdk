@@ -24,11 +24,13 @@ const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000";
 const SELECTORS = {
   transfer:     "0xa9059cbb",
   transferFrom: "0x23b872dd",
+  approve:      "0x095ea7b3",
 } as const;
 
-const ERC20_TRANSFER_INTERFACE = new Interface([
+const ERC20_INTERFACE = new Interface([
   "function transfer(address to, uint256 value)",
   "function transferFrom(address from, address to, uint256 value)",
+  "function approve(address spender, uint256 value)",
 ]);
 
 /**
@@ -67,7 +69,7 @@ export function extractFacts(tx: ProposedTx | null): TxFacts {
 
   try {
     if (selector === SELECTORS.transfer) {
-      const decoded = ERC20_TRANSFER_INTERFACE.decodeFunctionData("transfer", data);
+      const decoded = ERC20_INTERFACE.decodeFunctionData("transfer", data);
       return {
         tokenAddress: tx.to,
         tokenAmount:  BigInt(decoded[1]),
@@ -75,10 +77,20 @@ export function extractFacts(tx: ProposedTx | null): TxFacts {
       };
     }
     if (selector === SELECTORS.transferFrom) {
-      const decoded = ERC20_TRANSFER_INTERFACE.decodeFunctionData("transferFrom", data);
+      const decoded = ERC20_INTERFACE.decodeFunctionData("transferFrom", data);
       return {
         tokenAddress: tx.to,
         tokenAmount:  BigInt(decoded[2]),
+        originChainId: chainId,
+      };
+    }
+    if (selector === SELECTORS.approve) {
+      // amount may be MAX_UINT256 (unlimited approval) — that's valid data,
+      // not a special case. Indexer can decide how to display it.
+      const decoded = ERC20_INTERFACE.decodeFunctionData("approve", data);
+      return {
+        tokenAddress: tx.to,
+        tokenAmount:  BigInt(decoded[1]),
         originChainId: chainId,
       };
     }
