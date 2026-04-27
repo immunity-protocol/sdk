@@ -1,7 +1,14 @@
-import type { Hex32 } from "../types/antibody.js";
+import type { TxFacts } from "../tx/extractFacts.js";
+import type { Address, Hex32 } from "../types/antibody.js";
 import type { RegistryClient } from "./registry-client.js";
 
 const ZERO_BYTES32: Hex32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000";
+const EMPTY_FACTS: TxFacts = {
+  tokenAddress: ZERO_ADDRESS,
+  tokenAmount: 0n,
+  originChainId: 0,
+};
 
 export interface CheckSettlementResult {
   txHash: Hex32;
@@ -21,6 +28,11 @@ export interface CheckSettlementResult {
  * non-zero `antibodyId` triggers the 80% publisher / 20% treasury split
  * and emits `AntibodyMatched`.
  *
+ * `txFacts` is the SDK's extracted view of the proposed tx (token, amount,
+ * chain). The contract stores it on the event log so the indexer can
+ * attach a USD value off-chain. All-zero facts are valid (means the SDK
+ * couldn't decode any token info — a legitimate state, not an error).
+ *
  * Either path opportunistically sweeps up to `SWEEP_BATCH_SIZE` expired
  * stakes; the caller earns `SWEEP_BOUNTY` per release. Both are reported
  * back so the caller can surface earned bounty to the operator.
@@ -28,9 +40,15 @@ export interface CheckSettlementResult {
 export async function settleCheck(
   registry: RegistryClient,
   antibodyId: Hex32 | null,
+  txFacts: TxFacts = EMPTY_FACTS,
 ): Promise<CheckSettlementResult> {
   const id = (antibodyId ?? ZERO_BYTES32) as Hex32;
-  const tx = await registry.contract.check(id);
+  const tx = await registry.contract.check(
+    id,
+    txFacts.tokenAddress,
+    txFacts.tokenAmount,
+    BigInt(txFacts.originChainId),
+  );
   const receipt = await tx.wait();
   if (!receipt) {
     return {

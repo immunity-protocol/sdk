@@ -62,7 +62,7 @@ export async function runCheck(
 
   const hit = await deps.matchers.matchFirst({ tx, context });
   if (hit) {
-    const settlement = await settleCheck(deps.registry, hit.antibody.keccakId);
+    const settlement = await settleCheck(deps.registry, hit.antibody.keccakId, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -76,7 +76,7 @@ export async function runCheck(
   }
 
   if (policy === "deny-novel") {
-    const settlement = await settleCheck(deps.registry, null);
+    const settlement = await settleCheck(deps.registry, null, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -90,7 +90,7 @@ export async function runCheck(
   }
 
   if (policy === "trust-cache" || !deps.teeVerify) {
-    const settlement = await settleCheck(deps.registry, null);
+    const settlement = await settleCheck(deps.registry, null, txFacts);
     const reason =
       policy === "trust-cache"
         ? "trust-cache policy: novel input allowed without verification"
@@ -102,7 +102,7 @@ export async function runCheck(
   // verify mode: ask the TEE
   const verdict = await deps.teeVerify(tx, context);
   if (!verdict || (!verdict.block && !verdict.escalate)) {
-    const settlement = await settleCheck(deps.registry, null);
+    const settlement = await settleCheck(deps.registry, null, txFacts);
     return result(
       "allow",
       settlement.txHash,
@@ -117,7 +117,7 @@ export async function runCheck(
 
   if (verdict.block && verdict.publishSeed) {
     const minted = await mintAndAnnounce(deps, verdict);
-    const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null);
+    const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -139,7 +139,7 @@ export async function runCheck(
   // antibodies. With it, escalate-deny becomes a quality-gated publish.
   const minted =
     !allowed && verdict.publishSeed ? await mintAndAnnounce(deps, verdict) : null;
-  const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null);
+  const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null, txFacts);
   return result(
     allowed ? "allow" : "block",
     settlement.txHash,

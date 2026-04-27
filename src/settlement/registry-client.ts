@@ -16,7 +16,12 @@ export type RegistryMethods = {
   deposit(amount: bigint): Promise<ContractTransactionResponse>;
   withdraw(amount: bigint): Promise<ContractTransactionResponse>;
   publish(params: unknown): Promise<ContractTransactionResponse>;
-  check(antibodyId: string): Promise<ContractTransactionResponse>;
+  check(
+    antibodyId: string,
+    tokenAddress: string,
+    tokenAmount: bigint,
+    originChainId: bigint,
+  ): Promise<ContractTransactionResponse>;
   sweepExpired(): Promise<ContractTransactionResponse>;
   slash(keccakId: string): Promise<ContractTransactionResponse>;
   seedAntibody(params: unknown): Promise<ContractTransactionResponse>;
