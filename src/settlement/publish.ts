@@ -5,6 +5,10 @@ import { hashBytecodeMatcher } from "../keccak/matchers/bytecode.js";
 import { hashCallPatternMatcher } from "../keccak/matchers/call-pattern.js";
 import { computeTaintSetId, hashGraphMatcher } from "../keccak/matchers/graph.js";
 import { hashSemanticMatcher } from "../keccak/matchers/semantic.js";
+import type { PublicEnvelopeV1, PublicMatcherSummary } from "../storage/envelope.js";
+import { uploadPublicEnvelope } from "../storage/envelope.js";
+import type { StorageClient } from "../storage/indexer.js";
+import { uploadEncryptedContext } from "../storage/upload.js";
 import {
   type AntibodySeed,
   AntibodyTypeValue,
@@ -24,7 +28,31 @@ export interface PublishInput {
   verdict: Verdict;
   confidence: number;
   severity: number;
+  /**
+   * Short, redacted reasoning surfaced to indexers, explorers, and peer
+   * agents via the public envelope on 0G storage. Required: omitting this
+   * is what produces the "no reasoning recorded" UI state.
+   */
+  reasonSummary: string;
+  /**
+   * Full unredacted evidence bytes. When provided, the SDK encrypts the
+   * payload (AES-256-GCM with a fresh per-publish key) and uploads the
+   * ciphertext to 0G Storage; the resulting Merkle root lands on-chain as
+   * `contextHash`. Discarded if omitted.
+   *
+   * v1: the AES key is dropped after upload (audit-trail only).
+   * v2: the key will be wrapped to the TEE's attested encryption pubkey
+   * once 0G Compute exposes one.
+   */
+  evidence?: Uint8Array;
+  /**
+   * Override the matcher summary the SDK derives from `seed`. Most callers
+   * should leave this undefined.
+   */
+  matcherSummaryHint?: PublicMatcherSummary;
+  /** Skip the envelope upload entirely (advanced, when the caller has already pre-uploaded). */
   evidenceCid?: Hex32;
+  /** Skip the encrypted-evidence upload (advanced). */
   contextHash?: Hex32;
   embeddingHash?: Hex32;
   attestation?: Hex32;
@@ -53,6 +81,10 @@ export interface PublishResult {
   immSeq: number;
   txHash: Hex32;
   params: PublishParamsStruct;
+  /** Merkle root of the public envelope on 0G Storage. */
+  evidenceCid: Hex32;
+  /** Merkle root of the encrypted evidence on 0G Storage, if any was supplied. */
+  contextHash?: Hex32;
 }
 
 /**
@@ -83,22 +115,68 @@ export function buildPublishParams(input: PublishInput): PublishParamsStruct {
 }
 
 /**
- * Send a `Registry.publish(params)` tx, parse the `AntibodyPublished` event
- * for the assigned `keccakId` and `immSeq`, and return both. Maps the
- * Registry's `AntibodyExists` revert into a typed `DuplicateAntibodyError`.
+ * End-to-end publish:
+ *   1. Upload the public envelope (matcher + reasonSummary) to 0G Storage
+ *      → produces `evidenceCid`. Skipped only if the caller pre-supplies one.
+ *   2. If `evidence` bytes are provided, encrypt + upload them
+ *      → produces `contextHash`. Otherwise `contextHash` stays zero.
+ *   3. Send `Registry.publish(params)` with both CIDs populated.
+ *   4. Parse `AntibodyPublished` for `immSeq`.
+ *
+ * Mapping the Registry's `AntibodyExists` revert into a typed
+ * `DuplicateAntibodyError`. Storage uploads fail fast; on-chain tx failures
+ * after a successful upload leave orphan blobs on 0G storage (low-cost,
+ * acceptable trade for atomic-style API surface).
  */
 export async function publish(
   registry: RegistryClient,
+  storage: StorageClient,
   publisher: Address,
   input: PublishInput,
 ): Promise<PublishResult> {
-  const params = buildPublishParams(input);
+  const normalizedPublisher = normalizeAddress(publisher) as Address;
+  const flavor = input.seed.abType === "SEMANTIC" ? semanticFlavorCode(input.seed.flavor) : 0;
+  const primaryMatcherHash = primaryHashFor(input.seed);
   const keccakId = computeKeccakId(
     input.seed.abType,
-    params.flavor,
-    params.primaryMatcherHash,
-    normalizeAddress(publisher) as Address,
+    flavor,
+    primaryMatcherHash,
+    normalizedPublisher,
   );
+
+  // 1. Public envelope → evidenceCid
+  let evidenceCid = input.evidenceCid;
+  if (!evidenceCid || evidenceCid === ZERO_BYTES32) {
+    const envelope: PublicEnvelopeV1 = {
+      schema: "immunity/antibody-envelope/v1",
+      keccakId,
+      immId: "",
+      abType: input.seed.abType,
+      flavor,
+      publisher: normalizedPublisher,
+      createdAt: new Date().toISOString(),
+      reasonSummary: input.reasonSummary,
+      matcher: input.matcherSummaryHint ?? matcherSummaryFor(input.seed),
+      ...(input.attestation ? { attestation: input.attestation } : {}),
+    };
+    const upload = await uploadPublicEnvelope(storage, envelope);
+    evidenceCid = upload.evidenceCid;
+  }
+
+  // 2. Encrypted evidence → contextHash (optional)
+  let contextHash = input.contextHash;
+  if ((!contextHash || contextHash === ZERO_BYTES32) && input.evidence) {
+    const upload = await uploadEncryptedContext(storage, input.evidence);
+    contextHash = upload.contextHash;
+    // upload.key intentionally discarded (v1 audit-trail only).
+  }
+
+  // 3. On-chain publish with the resolved CIDs.
+  const params = buildPublishParams({
+    ...input,
+    evidenceCid,
+    ...(contextHash ? { contextHash } : {}),
+  });
 
   let tx: Awaited<ReturnType<typeof registry.contract.publish>>;
   try {
@@ -123,7 +201,52 @@ export async function publish(
     immSeq,
     txHash: (receipt?.hash ?? tx.hash) as Hex32,
     params,
+    evidenceCid,
+    ...(contextHash ? { contextHash } : {}),
   };
+}
+
+/**
+ * Build the public matcher summary the indexer hydrates from. Mirrors the
+ * dispatch in `primaryHashFor` so envelope and on-chain hash stay in lockstep.
+ */
+function matcherSummaryFor(seed: AntibodySeed): PublicMatcherSummary {
+  switch (seed.abType) {
+    case "ADDRESS":
+      return {
+        kind: "address",
+        chainId: seed.chainId,
+        target: normalizeAddress(seed.target) as Address,
+      };
+    case "CALL_PATTERN":
+      return {
+        kind: "call_pattern",
+        chainId: seed.chainId,
+        target: normalizeAddress(seed.target) as Address,
+        selector: seed.selector,
+      };
+    case "BYTECODE":
+      return { kind: "bytecode", bytecodeHash: seed.bytecodeHash };
+    case "GRAPH":
+      return {
+        kind: "graph",
+        chainId: seed.chainId,
+        taintSetId: computeTaintSetId({
+          chainId: seed.chainId,
+          taintedAddresses: seed.taintedAddresses,
+        }),
+        size: seed.taintedAddresses.length,
+      };
+    case "SEMANTIC": {
+      const markerHint =
+        seed.pattern.kind === "marker" ? seed.pattern.value.slice(0, 64) : undefined;
+      return {
+        kind: "semantic",
+        flavor: seed.flavor,
+        ...(markerHint ? { markerHint } : {}),
+      };
+    }
+  }
 }
 
 function semanticFlavorCode(flavor: "COUNTERPARTY" | "MANIPULATION" | "PROMPT_INJECTION"): number {
