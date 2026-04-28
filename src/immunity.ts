@@ -33,7 +33,6 @@ import { type RegistryClient, createRegistryClient } from "./settlement/registry
 import { type SweepResult, sweepExpired } from "./settlement/sweep.js";
 import { type UsdcClient, createUsdcClient } from "./settlement/usdc-client.js";
 import { type StorageClient, createStorageClient } from "./storage/indexer.js";
-import { createTeeVerifier } from "./tee/verifier.js";
 import type { Antibody, Hex32 } from "./types/antibody.js";
 import type { Address } from "./types/antibody.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
@@ -193,6 +192,11 @@ export class Immunity {
       return null;
     }
     try {
+      // Lazy import: pulls in @0glabs/0g-serving-broker only when a caller
+      // actually requests TEE-backed novel-threat verification. Keeps the
+      // SDK light for publishers and trust-cache callers (the broker's
+      // ESM bundle has historically tripped tsx's loader on cold start).
+      const { createTeeVerifier } = await import("./tee/verifier.js");
       return await createTeeVerifier({
         signer: this.#signer,
         rpcUrl: this.#network.rpcUrl,
