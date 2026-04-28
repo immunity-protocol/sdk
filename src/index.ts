@@ -71,6 +71,13 @@ export type { PublishInput, PublishResult } from "./settlement/publish.js";
 export type { PublisherStats } from "./settlement/balance.js";
 export type { SweepResult } from "./settlement/sweep.js";
 
+export { createStorageClient } from "./storage/indexer.js";
+export type { StorageClient, StorageClientOptions } from "./storage/indexer.js";
+export { uploadPublicEnvelope, fetchPublicEnvelope } from "./storage/envelope.js";
+export type { PublicEnvelopeV1, PublicMatcherSummary } from "./storage/envelope.js";
+export { uploadEncryptedContext } from "./storage/upload.js";
+export type { ContextUpload } from "./storage/upload.js";
+
 export { computeKeccakId } from "./keccak/id.js";
 export { hashAddressMatcher } from "./keccak/matchers/address.js";
 export { hashBytecodeMatcher } from "./keccak/matchers/bytecode.js";
