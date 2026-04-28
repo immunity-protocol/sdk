@@ -4,7 +4,8 @@ import type { MatcherRegistry } from "./matchers/matcher.js";
 import { settleCheck } from "./settlement/check.js";
 import { publish as publishAntibody } from "./settlement/publish.js";
 import type { RegistryClient } from "./settlement/registry-client.js";
-import { extractFacts, type TxFacts } from "./tx/extractFacts.js";
+import type { StorageClient } from "./storage/indexer.js";
+import { type TxFacts, extractFacts } from "./tx/extractFacts.js";
 import type { Address, Antibody, AntibodySeed, Hex32 } from "./types/antibody.js";
 import type { CheckOptions, CheckResult, NovelThreatPolicy } from "./types/check.js";
 import type { CheckContext, ProposedTx } from "./types/context.js";
@@ -16,6 +17,7 @@ const log = createLogger("immunity:check");
 export interface CheckFlowDeps {
   wallet: Address;
   registry: RegistryClient;
+  storage: StorageClient;
   cache: AntibodyCache;
   matchers: MatcherRegistry;
   publisher: GossipPublisher;
@@ -137,8 +139,7 @@ export async function runCheck(
   // operator's deny is the consent signal that this matcher belongs on the
   // network; without it we'd be flooding the network with low-confidence
   // antibodies. With it, escalate-deny becomes a quality-gated publish.
-  const minted =
-    !allowed && verdict.publishSeed ? await mintAndAnnounce(deps, verdict) : null;
+  const minted = !allowed && verdict.publishSeed ? await mintAndAnnounce(deps, verdict) : null;
   const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null, txFacts);
   return result(
     allowed ? "allow" : "block",
@@ -158,17 +159,18 @@ async function mintAndAnnounce(
 ): Promise<Antibody | null> {
   if (!verdict.publishSeed) return null;
   try {
-    const pub = await publishAntibody(deps.registry, deps.wallet, {
+    const pub = await publishAntibody(deps.registry, deps.storage, deps.wallet, {
       seed: verdict.publishSeed,
       verdict: "MALICIOUS",
       confidence: verdict.confidence,
       severity: verdict.severity,
+      // The TEE produces a free-text reason; surface it as the public
+      // envelope's reasonSummary so peers see why the antibody was minted.
+      reasonSummary: verdict.reason,
     });
     const minted = synthAntibodyFor(pub.keccakId, pub.immSeq, deps.wallet, verdict);
     deps.cache.put(minted);
-    await deps.publisher
-      .announce(minted)
-      .catch((e) => log.warn("gossip announce failed", e));
+    await deps.publisher.announce(minted).catch((e) => log.warn("gossip announce failed", e));
     return minted;
   } catch (err) {
     log.warn("auto-publish failed; continuing without antibody", err);
