@@ -2,7 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { Gossip, type GossipOptions, parseKeyPairFromPem } from "axl-pubsub";
 import type { Signer } from "ethers";
 import { AntibodyCache } from "./cache/cache.js";
-import { runCheck, type TeeVerifyOutcome } from "./check-flow.js";
+import { type TeeVerifyOutcome, runCheck } from "./check-flow.js";
 import { GossipPublisher } from "./gossip/publisher.js";
 import { GossipSubscriber } from "./gossip/subscriber.js";
 import { AddressMatcher } from "./matchers/address.js";
@@ -11,8 +11,7 @@ import { CallPatternMatcher } from "./matchers/call-pattern.js";
 import { GraphMatcher } from "./matchers/graph.js";
 import { MatcherRegistry } from "./matchers/matcher.js";
 import { SemanticMatcher } from "./matchers/semantic.js";
-import { resolveNetwork, TESTNET } from "./network.js";
-import { createTeeVerifier } from "./tee/verifier.js";
+import { TESTNET, resolveNetwork } from "./network.js";
 import {
   type PublisherStats,
   balanceOf as balanceOfRegistry,
@@ -33,6 +32,8 @@ import { getAntibody as getAntibodyById, getAntibodyByImmSeq } from "./settlemen
 import { type RegistryClient, createRegistryClient } from "./settlement/registry-client.js";
 import { type SweepResult, sweepExpired } from "./settlement/sweep.js";
 import { type UsdcClient, createUsdcClient } from "./settlement/usdc-client.js";
+import { type StorageClient, createStorageClient } from "./storage/indexer.js";
+import { createTeeVerifier } from "./tee/verifier.js";
 import type { Antibody, Hex32 } from "./types/antibody.js";
 import type { Address } from "./types/antibody.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
@@ -63,8 +64,8 @@ function synthAntibodyForPublish(
     confidence: input.confidence,
     severity: input.severity,
     primaryMatcherHash: result.params.primaryMatcherHash,
-    evidenceCid: input.evidenceCid ?? ZERO_BYTES32,
-    contextHash: input.contextHash ?? ZERO_BYTES32,
+    evidenceCid: result.evidenceCid,
+    contextHash: result.contextHash ?? ZERO_BYTES32,
     embeddingHash: input.embeddingHash ?? ZERO_BYTES32,
     attestation: input.attestation ?? ZERO_BYTES32,
     publisher,
@@ -100,6 +101,7 @@ export class Immunity {
   #gossip?: Gossip;
   #subscriber?: GossipSubscriber;
   #publisher?: GossipPublisher;
+  #storage?: StorageClient;
   #teeVerifierPromise?: Promise<
     ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
   >;
@@ -229,6 +231,7 @@ export class Immunity {
     return runCheck(tx, context, options, {
       wallet: s.wallet,
       registry: s.registry,
+      storage: this.#getStorage(s.signer),
       cache: s.cache,
       matchers: s.matchers,
       publisher: s.publisher,
@@ -241,16 +244,40 @@ export class Immunity {
 
   async publish(input: PublishInput): Promise<PublishResult> {
     const s = this.ensureStarted();
-    const result = await publishAntibody(s.registry, s.wallet, input);
+    const storage = this.#getStorage(s.signer);
+    const result = await publishAntibody(s.registry, storage, s.wallet, input);
     // Mint side-effect: gossip the antibody and prime the local cache so
     // peers learn about it without waiting for an on-chain event scan and
     // future check() calls on the same publisher hit cache directly.
     const minted = synthAntibodyForPublish(result, s.wallet, input);
     s.cache.put(minted);
-    s.publisher.announce(minted).catch((err) =>
-      log.warn("gossip announce failed; on-chain publish is still authoritative", err),
-    );
+    s.publisher
+      .announce(minted)
+      .catch((err) =>
+        log.warn("gossip announce failed; on-chain publish is still authoritative", err),
+      );
     return result;
+  }
+
+  /**
+   * Lazy 0G Storage client. Built on first `publish()` call so callers that
+   * never publish do not pay the indexer connection cost.
+   */
+  #getStorage(signer: Signer): StorageClient {
+    if (this.#storage) return this.#storage;
+    const indexerUrl = this.#network.storageIndexerUrl ?? TESTNET.storageIndexerUrl;
+    if (!indexerUrl) {
+      throw new MissingConfigError(
+        "network.storageIndexerUrl",
+        "publish() needs a 0G Storage indexer URL to upload the envelope",
+      );
+    }
+    this.#storage = createStorageClient({
+      indexerUrl,
+      rpcUrl: this.#network.rpcUrl,
+      signer,
+    });
+    return this.#storage;
   }
 
   async deposit(
@@ -300,6 +327,7 @@ export class Immunity {
   /** Internal accessors for the facade's downstream methods. */
   protected ensureStarted(): {
     wallet: Address;
+    signer: Signer;
     registry: RegistryClient;
     usdc: UsdcClient;
     cache: AntibodyCache;
@@ -311,6 +339,7 @@ export class Immunity {
     if (
       !this.#started ||
       !this.#wallet ||
+      !this.#signer ||
       !this.#registry ||
       !this.#usdc ||
       !this.#cache ||
@@ -322,6 +351,7 @@ export class Immunity {
     }
     return {
       wallet: this.#wallet,
+      signer: this.#signer,
       registry: this.#registry,
       usdc: this.#usdc,
       cache: this.#cache,
