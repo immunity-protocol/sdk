@@ -9,6 +9,7 @@ import type { PublicEnvelopeV1, PublicMatcherSummary } from "../storage/envelope
 import { uploadPublicEnvelope } from "../storage/envelope.js";
 import type { StorageClient } from "../storage/indexer.js";
 import { uploadEncryptedContext } from "../storage/upload.js";
+import type { Tier2LookupClient } from "../registry/lookup.js";
 import {
   type AntibodySeed,
   AntibodyTypeValue,
@@ -17,7 +18,7 @@ import {
   VerdictValue,
 } from "../types/antibody.js";
 import type { Address } from "../types/antibody.js";
-import { DuplicateAntibodyError } from "../types/errors.js";
+import { DuplicateAntibodyError, MatcherAlreadyClaimedError } from "../types/errors.js";
 import { normalizeAddress } from "../util/address.js";
 import type { RegistryClient } from "./registry-client.js";
 
@@ -133,6 +134,7 @@ export async function publish(
   storage: StorageClient,
   publisher: Address,
   input: PublishInput,
+  lookup?: Tier2LookupClient,
 ): Promise<PublishResult> {
   const normalizedPublisher = normalizeAddress(publisher) as Address;
   const flavor = input.seed.abType === "SEMANTIC" ? semanticFlavorCode(input.seed.flavor) : 0;
@@ -143,6 +145,18 @@ export async function publish(
     primaryMatcherHash,
     normalizedPublisher,
   );
+
+  // Preflight: if the matcher is already claimed (by anyone), surface the
+  // existing keccakId so the caller can reuse instead of paying for a doomed
+  // on-chain publish. The contract's matcherIndex revert is the authoritative
+  // safeguard; this just avoids the storage-upload + reverted-tx round-trip
+  // in the common case.
+  if (lookup) {
+    const existing = await lookup.getAntibodyByMatcherHash(primaryMatcherHash);
+    if (existing.exists && existing.antibody) {
+      throw new MatcherAlreadyClaimedError(existing.antibody.keccakId);
+    }
+  }
 
   // 1. Public envelope → evidenceCid
   let evidenceCid = input.evidenceCid;

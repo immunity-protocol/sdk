@@ -256,7 +256,7 @@ export class Immunity {
   async publish(input: PublishInput): Promise<PublishResult> {
     const s = this.ensureStarted();
     const storage = this.#getStorage(s.signer);
-    const result = await publishAntibody(s.registry, storage, s.wallet, input);
+    const result = await publishAntibody(s.registry, storage, s.wallet, input, s.lookup);
     // Mint side-effect: gossip the antibody and prime the local cache so
     // peers learn about it without waiting for an on-chain event scan and
     // future check() calls on the same publisher hit cache directly.

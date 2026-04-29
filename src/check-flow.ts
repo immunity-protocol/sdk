@@ -188,15 +188,21 @@ async function mintAndAnnounce(
 ): Promise<Antibody | null> {
   if (!verdict.publishSeed) return null;
   try {
-    const pub = await publishAntibody(deps.registry, deps.storage, deps.wallet, {
-      seed: verdict.publishSeed,
-      verdict: "MALICIOUS",
-      confidence: verdict.confidence,
-      severity: verdict.severity,
-      // The TEE produces a free-text reason; surface it as the public
-      // envelope's reasonSummary so peers see why the antibody was minted.
-      reasonSummary: verdict.reason,
-    });
+    const pub = await publishAntibody(
+      deps.registry,
+      deps.storage,
+      deps.wallet,
+      {
+        seed: verdict.publishSeed,
+        verdict: "MALICIOUS",
+        confidence: verdict.confidence,
+        severity: verdict.severity,
+        // The TEE produces a free-text reason; surface it as the public
+        // envelope's reasonSummary so peers see why the antibody was minted.
+        reasonSummary: verdict.reason,
+      },
+      deps.lookup,
+    );
     const minted = synthAntibodyFor(pub.keccakId, pub.immSeq, deps.wallet, verdict);
     deps.cache.put(minted);
     await deps.publisher.announce(minted).catch((e) => log.warn("gossip announce failed", e));

@@ -85,6 +85,24 @@ export class DuplicateAntibodyError extends ImmunityError {
   }
 }
 
+/**
+ * Raised when a different publisher already claims the primary matcher hash
+ * the caller wants to publish under. The first publisher keeps the economic
+ * claim; the SDK surfaces the existing keccakId so the caller can fetch and
+ * reuse it instead of minting a duplicate.
+ */
+export class MatcherAlreadyClaimedError extends ImmunityError {
+  override readonly name = "MatcherAlreadyClaimedError";
+  readonly existingKeccakId: string;
+  constructor(existingKeccakId: string) {
+    super(
+      `matcher already claimed by an existing antibody: ${existingKeccakId}`,
+      "ERR_MATCHER_ALREADY_CLAIMED",
+    );
+    this.existingKeccakId = existingKeccakId;
+  }
+}
+
 export class StakeLockedError extends ImmunityError {
   override readonly name = "StakeLockedError";
   readonly unlockAt: bigint;
