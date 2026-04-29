@@ -2,6 +2,18 @@
 
 All notable changes to the Immunity SDK are recorded here. The format is loosely [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0]
+
+### Added
+
+- **Cache hydration from on-chain Registry** — `Immunity.start()` now reads `nextImmSeq` and iterates `getAntibodyByImmSeq(1..N)`, populating the local cache before returning. Solves the "late joiner" problem: peers that connect after a one-shot publish missed the original gossip burst now see the full catalog before their first `check()`. Configurable via `bootstrapCacheOnStart` (default `true`) and `bootstrap.{concurrency, limit}` in `ImmunityConfig`. Internal `bootstrapCacheFromRegistry()` exported from `src/cache/bootstrap.ts` for direct use in tests / one-shot scripts.
+- **Tunable TEE Compute ledger thresholds** — `ImmunityConfig.minLedgerOg` / `minProviderOg` (and the equivalent `TeeVerifierOptions` fields) override the broker's default 3 OG / 1 OG floors. Lets agents with small wallets reach a working TEE without per-agent funding topups.
+- **`Immunity.ensureTeeFunded({ minLedgerOg?, minProviderOg? })`** — explicit, idempotent fund-the-broker entrypoint for callers (e.g. an agent's boot sequence) that don't want to wait for the lazy TEE init triggered by the first novel-threat check.
+
+### Changed
+
+- `RegistryMethods` now includes `nextImmSeq()` so the bootstrap helper can read the catalog count without a manual cast.
+
 ## [0.5.0]
 
 ### Added
