@@ -81,4 +81,34 @@ export interface ImmunityConfig {
    * seeds (the v0.4 behavior). See `seed-from-tx.ts` for guardrails.
    */
   semanticAutoMint?: boolean;
+  /**
+   * On `start()`, hydrate the local cache from the on-chain Registry by
+   * iterating `getAntibodyByImmSeq(1..nextImmSeq)`. Default `true` so
+   * late-joining peers see the catalog before their first check. Set to
+   * `false` for one-shot scripts (publish-threats, fund-og) that do not
+   * need to match on the catalog.
+   */
+  bootstrapCacheOnStart?: boolean;
+  /**
+   * Tuning for the bootstrap step (only relevant when
+   * `bootstrapCacheOnStart` is true).
+   */
+  bootstrap?: {
+    /** Concurrent fetches; default 4. */
+    concurrency?: number;
+    /** Soft cap on antibodies fetched. Default: no cap. */
+    limit?: number;
+  };
+  /**
+   * Minimum 0G to keep in the TEE Compute ledger when the verifier inits.
+   * Default 3. Lower values let agents with small wallets (e.g. demo fleet
+   * agents holding ~0.3 OG) reach a working TEE without per-agent funding
+   * topups.
+   */
+  minLedgerOg?: number;
+  /**
+   * Minimum 0G to deposit into the TEE provider sub-account when the
+   * verifier inits. Default 1. Same rationale as `minLedgerOg`.
+   */
+  minProviderOg?: number;
 }

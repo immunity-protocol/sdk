@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import { Gossip, type GossipOptions, parseKeyPairFromPem } from "axl-pubsub";
 import type { Signer } from "ethers";
+import { bootstrapCacheFromRegistry } from "./cache/bootstrap.js";
 import { AntibodyCache } from "./cache/cache.js";
 import { type TeeVerifyOutcome, runCheck } from "./check-flow.js";
 import { GossipPublisher } from "./gossip/publisher.js";
@@ -171,11 +172,27 @@ export class Immunity {
     await this.#subscriber.start();
     this.#publisher = new GossipPublisher(this.#gossip);
 
+    // Hydrate the local cache from the on-chain Registry so late joiners
+    // (anyone who wasn't subscribed when the catalog was originally
+    // gossipped) see existing antibodies before their first check(). The
+    // gossip subscriber is already running, so any concurrent live
+    // publishes are absorbed in parallel; cache.put() is idempotent so
+    // overlap between bootstrap and a fresh gossip notify on the same
+    // antibody is harmless.
+    if (this.#config.bootstrapCacheOnStart !== false) {
+      try {
+        await bootstrapCacheFromRegistry(this.#registry, this.#cache, this.#config.bootstrap);
+      } catch (err) {
+        log.warn("cache bootstrap failed; continuing without prefetch", { err: String(err) });
+      }
+    }
+
     this.#started = true;
     log.info("started", {
       wallet: this.#wallet,
       registry: this.#network.registryAddress,
       chainId: this.#network.chainId,
+      cache_size: this.#cache.size(),
     });
 
     // Lazy-init the TEE verifier in the background. start() returns fast;
@@ -212,6 +229,8 @@ export class Immunity {
         escalateThreshold: this.#config.confidenceThresholds?.escalate ?? 60,
         defaultChainId: this.#network.chainId,
         semanticAutoMint: this.#config.semanticAutoMint ?? false,
+        ...(this.#config.minLedgerOg !== undefined ? { minLedgerOg: this.#config.minLedgerOg } : {}),
+        ...(this.#config.minProviderOg !== undefined ? { minProviderOg: this.#config.minProviderOg } : {}),
       });
     } catch (err) {
       log.warn(
@@ -308,6 +327,44 @@ export class Immunity {
   async balance(): Promise<bigint> {
     const s = this.ensureStarted();
     return balanceOfRegistry(s.registry, s.wallet);
+  }
+
+  /**
+   * Bring up the 0G Compute broker for this wallet and ensure the ledger
+   * + provider sub-account hold the requested 0G floor. Idempotent: a
+   * second call after a successful first does nothing on chain.
+   *
+   * Useful for callers who want to pre-fund ledgers from operator code
+   * (e.g. an agent's boot sequence) rather than waiting for the lazy
+   * TEE init triggered by the first novel-threat check. Honors
+   * `ImmunityConfig.minLedgerOg` / `minProviderOg` when explicit args
+   * are not supplied.
+   */
+  async ensureTeeFunded(opts?: {
+    minLedgerOg?: number;
+    minProviderOg?: number;
+  }): Promise<{ ledgerOg: number; providerOg: number }> {
+    const s = this.ensureStarted();
+    const minLedger = opts?.minLedgerOg ?? this.#config.minLedgerOg ?? 3;
+    const minProvider = opts?.minProviderOg ?? this.#config.minProviderOg ?? 1;
+    const computeProvider = this.#network.computeProvider ?? TESTNET.computeProvider;
+    if (!computeProvider) {
+      throw new MissingConfigError(
+        "network.computeProvider",
+        "ensureTeeFunded() needs a TEE compute provider configured on the network preset",
+      );
+    }
+    // Lazy import to keep the broker SDK out of consumers that never call
+    // TEE-related code (matches the pattern already used by #initTeeVerifier).
+    const { initTeeBroker } = await import("./tee/broker.js");
+    await initTeeBroker({
+      signer: s.signer,
+      preferredProvider: computeProvider,
+      ensureFunded: true,
+      minLedgerOg: minLedger,
+      minProviderOg: minProvider,
+    });
+    return { ledgerOg: minLedger, providerOg: minProvider };
   }
 
   async publisherStats(): Promise<PublisherStats> {

@@ -27,6 +27,7 @@ export type RegistryMethods = {
   seedAntibody(params: unknown): Promise<ContractTransactionResponse>;
   withdrawTreasury(amount: bigint, to: string): Promise<ContractTransactionResponse>;
   balances(account: string): Promise<bigint>;
+  nextImmSeq(): Promise<bigint>;
   getAntibody(keccakId: string): Promise<unknown>;
   getAntibodyByImmSeq(immSeq: number | bigint): Promise<unknown>;
   getAntibodyByMatcherHash(matcherHash: string): Promise<unknown>;
