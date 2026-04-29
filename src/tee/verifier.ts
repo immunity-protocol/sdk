@@ -36,6 +36,17 @@ export interface TeeVerifierOptions {
    * to keep the upgrade additive; enable explicitly per agent.
    */
   semanticAutoMint?: boolean;
+  /**
+   * Minimum 0G to ensure in the broker ledger. Forwarded to
+   * `initTeeBroker.minLedgerOg`. Default 3 (matches initTeeBroker default).
+   * Lower for fleets where each agent holds a small balance.
+   */
+  minLedgerOg?: number;
+  /**
+   * Minimum 0G to deposit into the provider sub-account. Forwarded to
+   * `initTeeBroker.minProviderOg`. Default 1.
+   */
+  minProviderOg?: number;
 }
 
 /**
@@ -70,6 +81,8 @@ export async function createTeeVerifier(
     signer: opts.signer,
     ensureFunded: opts.ensureFunded ?? true,
     ...(opts.preferredProvider ? { preferredProvider: opts.preferredProvider } : {}),
+    ...(opts.minLedgerOg !== undefined ? { minLedgerOg: opts.minLedgerOg } : {}),
+    ...(opts.minProviderOg !== undefined ? { minProviderOg: opts.minProviderOg } : {}),
   });
   try {
     await verifyAttestation(broker);
