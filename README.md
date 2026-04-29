@@ -89,6 +89,20 @@ await immunity.stop();
 └──────────────────────────┘
 ```
 
+### Three-tier lookup
+
+Every `check()` walks three tiers, cheapest-first:
+
+```
+Tier 1 — Local cache    ~1 ms     hit: settle on chain
+Tier 2 — Registry RPC   ~200 ms   hit: settle + populate cache
+Tier 3 — TEE detection  ~3 s      only for genuinely novel threats
+```
+
+The Registry is the canonical memory of the network — every published antibody lands in its `matcherIndex` (primary matcher hash → keccakId). When the local cache misses, the SDK queries `Registry.getAntibodyByMatcherHash(hash)` over the existing RPC connection and resolves on the same chain it would settle against. TEE detection only fires when neither the cache nor the chain has a record, which is the only path that should ever cost a 0G Compute inference.
+
+A short negative cache (5 minutes, evicted on incoming gossip) prevents the SDK from hammering RPC for the same legitimate-but-uncommon counterparty. See [`docs/lookup-tiers.md`](./docs/lookup-tiers.md) for the full per-tier latency, cost, and triggering breakdown.
+
 Five matchers run cheap-first against the local cache:
 
 1. **AddressMatcher** (O(1) map by `(chainId, address)`)
@@ -97,7 +111,7 @@ Five matchers run cheap-first against the local cache:
 4. **BytecodeMatcher** (one cached `eth_getCode` per target)
 5. **SemanticMatcher** (marker substring scan, embedding ANN deferred to v2)
 
-First hit wins. A miss with `novelThreatPolicy: "verify"` falls through to the 0G Compute TEE running qwen-2.5-7b-instruct. Verdicts are returned as strict JSON; the SDK never extracts free text into antibody envelopes.
+First hit wins. A miss falls through to Tier 2 (Registry RPC) for any tx where a canonical address-shaped matcher hash can be derived. A double miss with `novelThreatPolicy: "verify"` then falls through to the 0G Compute TEE running qwen-2.5-7b-instruct. Verdicts are returned as strict JSON; the SDK never extracts free text into antibody envelopes.
 
 ## AXL mesh
 
