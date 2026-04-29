@@ -154,7 +154,7 @@ npm run typecheck
 
 | network | chainId | RPC | Registry | MockUSDC |
 |---|---|---|---|---|
-| Galileo testnet | 16602 | https://evmrpc-testnet.0g.ai | 0x45Ee45Ca358b3fc9B1b245a8f1c1C3128caC8e48 | 0x2Aee1d140422C62AE23465596801C35f3Ce74F9E |
+| Galileo testnet | 16602 | https://evmrpc-testnet.0g.ai | 0xbbD14Ff50480085cA3071314ca0AA73768569679 | 0x39D484EaBd1e6be837f9dbbb1DE540d425A70061 |
 
 ## License
 
