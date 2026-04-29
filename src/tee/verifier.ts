@@ -28,6 +28,14 @@ export interface TeeVerifierOptions {
    * Defaults to true. Disable for read-only environments.
    */
   ensureFunded?: boolean;
+  /**
+   * When true, allow the SDK to mint SEMANTIC antibodies from TEE verdicts
+   * (using the LLM-extracted marker, validated for length / multi-word /
+   * denylist / verbatim presence in the bundle). When false (default),
+   * SEMANTIC verdicts fall back to ADDRESS seeds. Off by default for v0.5
+   * to keep the upgrade additive; enable explicitly per agent.
+   */
+  semanticAutoMint?: boolean;
 }
 
 /**
@@ -112,7 +120,7 @@ export async function createTeeVerifier(
     });
 
     const decision = decideFromVerdict(raw, opts.blockThreshold, opts.escalateThreshold);
-    const seed = seedFromTx(raw, tx, ctx, opts.defaultChainId);
+    const seed = seedFromTx(raw, tx, ctx, opts.defaultChainId, opts.semanticAutoMint ?? false);
     const outcome = {
       block: decision.treatAsBlock && seed !== null,
       escalate: decision.treatAsEscalate || (decision.treatAsBlock && seed === null),

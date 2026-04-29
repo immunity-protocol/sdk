@@ -15,6 +15,14 @@ export interface RawVerdict {
   confidence: number;
   severity: number;
   reasoning: string;
+  /**
+   * Verbatim substring extracted by the LLM for SEMANTIC verdicts. The
+   * parser carries it through as-is; downstream `seedFromTx` validates
+   * length, multi-word shape, denylist membership, and verbatim presence
+   * in the bundle before allowing it to seed an antibody. Always null for
+   * non-SEMANTIC abTypes.
+   */
+  marker: string | null;
 }
 
 const ABTYPE_KEYS = new Set(Object.keys(AntibodyTypeValue));
@@ -57,8 +65,17 @@ export function parseVerdict(raw: string): RawVerdict {
   const confidence = clampInt(json.confidence, "confidence");
   const severity = clampInt(json.severity, "severity");
   const reasoning = typeof json.reasoning === "string" ? json.reasoning : "";
+  // Marker is meaningful only for SEMANTIC; coerce silently otherwise so we
+  // do not reject otherwise-valid verdicts when the model attaches a marker
+  // to e.g. an ADDRESS verdict.
+  const marker =
+    abType !== "SEMANTIC"
+      ? null
+      : typeof json.marker === "string" && json.marker.trim().length > 0
+        ? json.marker
+        : null;
 
-  return { verdict, abType, flavor, confidence, severity, reasoning };
+  return { verdict, abType, flavor, confidence, severity, reasoning, marker };
 }
 
 /**

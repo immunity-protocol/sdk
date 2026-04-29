@@ -211,6 +211,7 @@ export class Immunity {
         blockThreshold: this.#config.confidenceThresholds?.block ?? 85,
         escalateThreshold: this.#config.confidenceThresholds?.escalate ?? 60,
         defaultChainId: this.#network.chainId,
+        semanticAutoMint: this.#config.semanticAutoMint ?? false,
       });
     } catch (err) {
       log.warn(

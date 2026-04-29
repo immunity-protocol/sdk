@@ -1,8 +1,8 @@
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashSemanticMatcher } from "../keccak/matchers/semantic.js";
 import type { Antibody, Hex32 } from "../types/antibody.js";
-import type { CheckContext } from "../types/context.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
+import { flattenContext } from "./semantic-flatten.js";
 
 /**
  * SemanticMatcher: v1 marker-substring scan.
@@ -34,7 +34,7 @@ export class SemanticMatcher implements Matcher {
   }
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
-    const haystack = this.flatten(probe.context).toLowerCase();
+    const haystack = flattenContext(probe.context).toLowerCase();
     if (!haystack) return null;
     for (const [marker, ab] of this.markers) {
       if (ab.status !== "ACTIVE") continue;
@@ -47,21 +47,6 @@ export class SemanticMatcher implements Matcher {
       }
     }
     return null;
-  }
-
-  private flatten(ctx: CheckContext): string {
-    const parts: string[] = [];
-    for (const turn of ctx.conversation ?? []) parts.push(turn.content);
-    for (const t of ctx.toolTrace ?? []) parts.push(t.tool, JSON.stringify(t.args));
-    for (const s of ctx.sources ?? []) {
-      parts.push(s.url);
-      if (s.extractedText) parts.push(s.extractedText);
-    }
-    if (ctx.counterparty) {
-      parts.push(ctx.counterparty.id);
-      if (ctx.counterparty.ens) parts.push(ctx.counterparty.ens);
-    }
-    return parts.join(" ");
   }
 
   private tryIndex(ab: Antibody): void {

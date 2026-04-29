@@ -73,4 +73,12 @@ export interface ImmunityConfig {
   onTimeout?: "deny" | "allow";
   confidenceThresholds?: Partial<ConfidenceThresholds>;
   novelThreatPolicy?: NovelThreatPolicy;
+  /**
+   * Allow the TEE verifier to mint SEMANTIC antibodies from verdicts
+   * (using the LLM-extracted marker, validated for length, multi-word
+   * shape, denylist membership, and verbatim presence in the bundle).
+   * Off by default. When false, SEMANTIC verdicts fall back to ADDRESS
+   * seeds (the v0.4 behavior). See `seed-from-tx.ts` for guardrails.
+   */
+  semanticAutoMint?: boolean;
 }

@@ -50,7 +50,12 @@ export interface TeeVerifyOutcome {
   reason: string;
   confidence: number;
   severity: number;
-  /** Seed for the auto-publish step; only ADDRESS / CALL_PATTERN supported in v1. */
+  /**
+   * Seed for the auto-publish step. ADDRESS and CALL_PATTERN are derived
+   * from observable tx fields. SEMANTIC is derived from a validated
+   * LLM-supplied marker (opt-in via `Immunity.semanticAutoMint`). BYTECODE
+   * and GRAPH still fall back to ADDRESS in `seedFromTx`.
+   */
   publishSeed?: AntibodySeed;
 }
 
