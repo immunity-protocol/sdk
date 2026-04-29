@@ -29,6 +29,8 @@ export type RegistryMethods = {
   balances(account: string): Promise<bigint>;
   getAntibody(keccakId: string): Promise<unknown>;
   getAntibodyByImmSeq(immSeq: number | bigint): Promise<unknown>;
+  getAntibodyByMatcherHash(matcherHash: string): Promise<unknown>;
+  matcherIndex(matcherHash: string): Promise<string>;
   getPublisherStats(publisher: string): Promise<unknown>;
   getActiveStakeCount(): Promise<bigint>;
   getOldestExpiredStakes(limit: number | bigint): Promise<string[]>;
