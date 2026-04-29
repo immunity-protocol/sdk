@@ -1,5 +1,6 @@
 import type { Gossip, ReceivedPub, Subscription } from "axl-pubsub";
 import type { AntibodyCache } from "../cache/cache.js";
+import type { NegativeMatcherCache } from "../registry/negative-cache.js";
 import { createLogger } from "../util/logger.js";
 import { decodeAntibody } from "./envelope.js";
 import { TOPIC_WILDCARD } from "./topics.js";
@@ -23,6 +24,7 @@ export class GossipSubscriber {
   constructor(
     private readonly gossip: Gossip,
     private readonly cache: AntibodyCache,
+    private readonly negativeCache?: NegativeMatcherCache,
   ) {}
 
   async start(): Promise<void> {
@@ -40,6 +42,9 @@ export class GossipSubscriber {
     try {
       const ab = decodeAntibody(msg.payload);
       this.cache.put(ab);
+      // Freshly-published antibodies must become visible immediately, not be
+      // hidden behind a stale "absent" entry from a prior Tier-2 miss.
+      this.negativeCache?.evict(ab.primaryMatcherHash);
       log.debug("absorbed", { topic: msg.topic, immId: ab.immId, from: msg.from.slice(0, 12) });
     } catch (err) {
       log.warn("decode failed; dropping", {
