@@ -12,6 +12,8 @@ import { GraphMatcher } from "./matchers/graph.js";
 import { MatcherRegistry } from "./matchers/matcher.js";
 import { SemanticMatcher } from "./matchers/semantic.js";
 import { TESTNET, resolveNetwork } from "./network.js";
+import { NegativeMatcherCache } from "./registry/negative-cache.js";
+import { Tier2LookupClient } from "./registry/lookup.js";
 import {
   type PublisherStats,
   balanceOf as balanceOfRegistry,
@@ -100,6 +102,7 @@ export class Immunity {
   #gossip?: Gossip;
   #subscriber?: GossipSubscriber;
   #publisher?: GossipPublisher;
+  #lookup?: Tier2LookupClient;
   #storage?: StorageClient;
   #teeVerifierPromise?: Promise<
     ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
@@ -159,9 +162,12 @@ export class Immunity {
       const pem = privateKey.export({ type: "pkcs8", format: "pem" }) as string;
       gossipOpts.keyPair = await parseKeyPairFromPem(pem);
     }
+    const negativeCache = new NegativeMatcherCache();
+    this.#lookup = new Tier2LookupClient(this.#registry, this.#network.chainId, negativeCache);
+
     this.#gossip = new Gossip(gossipOpts);
     await this.#gossip.start();
-    this.#subscriber = new GossipSubscriber(this.#gossip, this.#cache);
+    this.#subscriber = new GossipSubscriber(this.#gossip, this.#cache, negativeCache);
     await this.#subscriber.start();
     this.#publisher = new GossipPublisher(this.#gossip);
 
@@ -239,6 +245,7 @@ export class Immunity {
       cache: s.cache,
       matchers: s.matchers,
       publisher: s.publisher,
+      lookup: s.lookup,
       defaultChainId: s.network.chainId,
       policy: this.#config.novelThreatPolicy ?? "verify",
       ...(this.#config.onEscalate ? { onEscalate: this.#config.onEscalate } : {}),
@@ -338,6 +345,7 @@ export class Immunity {
     matchers: MatcherRegistry;
     gossip: Gossip;
     publisher: GossipPublisher;
+    lookup: Tier2LookupClient;
     network: NetworkConfig;
   } {
     if (
@@ -349,7 +357,8 @@ export class Immunity {
       !this.#cache ||
       !this.#matchers ||
       !this.#gossip ||
-      !this.#publisher
+      !this.#publisher ||
+      !this.#lookup
     ) {
       throw new NotStartedError();
     }
@@ -362,6 +371,7 @@ export class Immunity {
       matchers: this.#matchers,
       gossip: this.#gossip,
       publisher: this.#publisher,
+      lookup: this.#lookup,
       network: this.#network,
     };
   }

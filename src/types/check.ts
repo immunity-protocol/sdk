@@ -14,11 +14,14 @@ export type Decision = "allow" | "block" | "escalate";
 /**
  * Source of the verdict producing a result.
  *
- * - `cache`: a local matcher hit on a cached antibody.
- * - `tee`: a 0G Compute TEE inference returned a verdict for a novel input.
+ * - `cache`: a local matcher hit on a cached antibody (Tier 1).
+ * - `registry`: a Registry RPC hit on the matcher index (Tier 2). The local
+ *   cache had no record but the chain did; the SDK populated the cache.
+ * - `tee`: a 0G Compute TEE inference returned a verdict for a novel input
+ *   (Tier 3). Only fired when neither the cache nor the chain knew.
  * - `policy`: no matcher hit and no TEE call; the configured policy decided.
  */
-export type DecisionSource = "cache" | "tee" | "policy";
+export type DecisionSource = "cache" | "registry" | "tee" | "policy";
 
 export interface CheckResult {
   allowed: boolean;

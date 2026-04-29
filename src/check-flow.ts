@@ -1,6 +1,7 @@
 import type { AntibodyCache } from "./cache/cache.js";
 import type { GossipPublisher } from "./gossip/publisher.js";
 import type { MatcherRegistry } from "./matchers/matcher.js";
+import type { Tier2LookupClient } from "./registry/lookup.js";
 import { settleCheck } from "./settlement/check.js";
 import { publish as publishAntibody } from "./settlement/publish.js";
 import type { RegistryClient } from "./settlement/registry-client.js";
@@ -23,6 +24,12 @@ export interface CheckFlowDeps {
   publisher: GossipPublisher;
   defaultChainId: number;
   policy: NovelThreatPolicy;
+  /**
+   * Tier-2 lookup against the on-chain Registry's matcher index. Optional
+   * for tests and degraded modes; when absent, `check()` skips Tier 2 and
+   * goes straight from cache miss to policy fork (the legacy two-tier path).
+   */
+  lookup?: Tier2LookupClient;
   onEscalate?: (ctx: {
     reason: string;
     confidence: number;
@@ -75,6 +82,28 @@ export async function runCheck(
       false,
       txFacts,
     );
+  }
+
+  // Tier 2: chain has the canonical record even when the cache missed. Going
+  // through the Registry's matcher index avoids burning a TEE call for any
+  // threat that's already known to the network. Populate Tier 1 on hit so
+  // the next check() this process serves resolves locally.
+  if (deps.lookup) {
+    const onChain = await deps.lookup.firstMatch(tx, context);
+    if (onChain) {
+      deps.cache.put(onChain);
+      const settlement = await settleCheck(deps.registry, onChain.keccakId, txFacts);
+      return result(
+        "block",
+        settlement.txHash,
+        [onChain],
+        "Registry matcher index hit",
+        "registry",
+        onChain.confidence,
+        false,
+        txFacts,
+      );
+    }
   }
 
   if (policy === "deny-novel") {
@@ -202,7 +231,7 @@ function result(
   checkId: Hex32 | null,
   antibodies: Antibody[],
   reason: string,
-  source: "cache" | "tee" | "policy",
+  source: "cache" | "registry" | "tee" | "policy",
   confidence: number,
   novel: boolean,
   txFacts: TxFacts,
