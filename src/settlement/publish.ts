@@ -196,6 +196,8 @@ export async function publish(
   try {
     tx = await registry.contract.publish(params);
   } catch (err) {
+    const matcherClaim = decodeMatcherAlreadyClaimed(err, registry);
+    if (matcherClaim) throw new MatcherAlreadyClaimedError(matcherClaim);
     if (looksLikeDuplicate(err)) throw new DuplicateAntibodyError(keccakId);
     throw err;
   }
@@ -326,5 +328,35 @@ function auxiliaryKeyFor(seed: AntibodySeed): Hex32 {
 
 function looksLikeDuplicate(err: unknown): boolean {
   const msg = String((err as { message?: string }).message ?? "");
-  return msg.includes("AntibodyExists");
+  // Match AntibodyExists() but not AntibodyAlreadyExistsForMatcher (which is
+  // handled separately and carries an existingKeccakId arg).
+  return msg.includes("AntibodyExists()") || /\bAntibodyExists\b(?!ForMatcher)/.test(msg);
+}
+
+/**
+ * Decode `AntibodyAlreadyExistsForMatcher(bytes32 existingKeccakId)` from a
+ * reverted publish() call. Returns the existing keccakId on hit, undefined
+ * otherwise. Tries the contract interface first (cleanest path); falls back
+ * to a regex on the message string for providers that surface the data
+ * differently.
+ */
+function decodeMatcherAlreadyClaimed(err: unknown, registry: RegistryClient): Hex32 | undefined {
+  const data = (err as { data?: string; info?: { error?: { data?: string } } }) ?? {};
+  const errorData =
+    (typeof data.data === "string" ? data.data : undefined) ??
+    (typeof data.info?.error?.data === "string" ? data.info.error.data : undefined);
+  if (errorData && errorData.startsWith("0x")) {
+    try {
+      const parsed = registry.contract.interface.parseError(errorData);
+      if (parsed?.name === "AntibodyAlreadyExistsForMatcher") {
+        return parsed.args[0] as Hex32;
+      }
+    } catch {
+      // fall through to message regex
+    }
+  }
+  const msg = String((err as { message?: string }).message ?? "");
+  const match = msg.match(/AntibodyAlreadyExistsForMatcher\("?(0x[0-9a-fA-F]{64})"?\)/);
+  if (match?.[1]) return match[1].toLowerCase() as Hex32;
+  return undefined;
 }
