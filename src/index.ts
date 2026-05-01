@@ -42,6 +42,11 @@ export type {
 export { extractFacts } from "./tx/extractFacts.js";
 export type { TxFacts } from "./tx/extractFacts.js";
 
+export type { TeeVerifyFn, TeeVerifyOutcome } from "./check-flow.js";
+export { buildVerdictPrompt, distillBundle } from "./tee/prompt.js";
+export { parseVerdict } from "./tee/parse.js";
+export type { RawVerdict } from "./tee/parse.js";
+
 export type {
   ConfidenceThresholds,
   EscalateHandler,

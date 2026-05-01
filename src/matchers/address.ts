@@ -1,19 +1,29 @@
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashAddressMatcher } from "../keccak/matchers/address.js";
+import { extractCounterparties } from "../tx/extractCounterparties.js";
 import type { Address, Antibody } from "../types/antibody.js";
 import { chainAddressKey } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 
 /**
  * AddressMatcher: O(1) lookup by `(chainId, address)` against ADDRESS-type
- * antibodies in the cache. Probes the proposed tx's `to` and the optional
- * counterparty id when it parses as an EVM address.
+ * antibodies in the cache. Probes:
+ *   - the proposed tx's `to`
+ *   - every recipient/spender/path-token decoded from the tx's calldata
+ *     (ERC-20 transfer/transferFrom/approve, Uniswap V2/V3 swap variants)
+ *   - the optional counterparty id when it parses as an EVM address
  *
- * The index key comes from `Antibody.seed` (carried on gossip envelopes).
- * Antibodies hydrated bare from chain reads have no seed and therefore
- * cannot be indexed; they only match if a future gossip arrival fills in
- * the seed for the same `keccakId`. We verify the seed by recomputing the
- * primary-matcher hash and rejecting any mismatch.
+ * The calldata decode is essential: an agent transferring USDC to a
+ * sanctioned address has `tx.to` = the USDC contract, which the matcher
+ * would otherwise treat as benign. The whole point of intercepting the
+ * proposed tx is to look at *what* the agent is about to do, which lives
+ * one level deeper than `tx.to` for any token-routed or DEX-routed tx.
+ *
+ * The index key comes from `Antibody.seed` (carried on gossip envelopes
+ * or rebuilt from the public 0G storage envelope on bootstrap, see
+ * `cache/bootstrap.ts`). Antibodies whose seed never lands stay
+ * unindexed; we verify the seed by recomputing the primary-matcher hash
+ * and rejecting any mismatch.
  */
 export class AddressMatcher implements Matcher {
   readonly name = "ADDRESS";
@@ -51,11 +61,14 @@ export class AddressMatcher implements Matcher {
   }
 
   private candidateAddresses(probe: MatchProbe): Address[] {
-    const out: Address[] = [];
-    if (probe.tx?.to) out.push(probe.tx.to);
+    const out = new Set<Address>();
+    if (probe.tx?.to) out.add(probe.tx.to.toLowerCase() as Address);
+    for (const a of extractCounterparties(probe.tx)) out.add(a);
     const cp = probe.context.counterparty?.id;
-    if (cp && /^0x[0-9a-fA-F]{40}$/.test(cp)) out.push(cp as Address);
-    return out;
+    if (cp && /^0x[0-9a-fA-F]{40}$/.test(cp)) {
+      out.add(cp.toLowerCase() as Address);
+    }
+    return [...out];
   }
 
   private tryIndex(ab: Antibody): void {

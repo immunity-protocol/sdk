@@ -95,6 +95,16 @@ export async function initTeeBroker(opts: TeeBrokerOptions): Promise<TeeBroker> 
   };
 }
 
+/**
+ * 0G's `LedgerBroker.addLedger` enforces a hard minimum deposit of 3 0G —
+ * passing less throws "Minimum balance to create a ledger is 3 0G". The
+ * `minLedger` arg here is our *check threshold* (when do we top up?), not
+ * the *create amount*, so we floor the initial deposit at the protocol
+ * minimum. Callers passing `minLedger < 3` are saying "I want a smaller
+ * maintenance threshold," not "I want to skirt the protocol minimum."
+ */
+const LEDGER_CREATE_MIN_OG = 3;
+
 async function ensureLedger(
   broker: Awaited<ReturnType<typeof createZGComputeNetworkBroker>>,
   minLedger: number,
@@ -102,8 +112,12 @@ async function ensureLedger(
   try {
     await broker.ledger.getLedger();
   } catch {
-    log.info("ledger missing; creating with minimum deposit", { minLedger });
-    await broker.ledger.addLedger(minLedger);
+    const deposit = Math.max(minLedger, LEDGER_CREATE_MIN_OG);
+    log.info("ledger missing; creating with protocol minimum deposit", {
+      requested: minLedger,
+      depositing: deposit,
+    });
+    await broker.ledger.addLedger(deposit);
   }
 }
 

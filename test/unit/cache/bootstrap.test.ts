@@ -133,6 +133,40 @@ describe("bootstrapCacheFromRegistry", () => {
     expect(log.getAntibodyByImmSeq.sort((a, b) => a - b)).toEqual([1, 2, 3]);
   });
 
+  it("retries transient per-seq failures before giving up", async () => {
+    const cache = new AntibodyCache();
+    // Registry that fails seq 2 the first two attempts, then succeeds on
+    // the third. Mirrors the 0G testnet flake we saw on packed-fleet boot
+    // where the same call alternates between CALL_EXCEPTION and a real
+    // antibody depending on which read replica handled the request.
+    const attempts: Record<number, number> = {};
+    const flakyRegistry = {
+      address: "0x0000000000000000000000000000000000000bbb" as Address,
+      contract: {
+        async nextImmSeq() {
+          return 3n;
+        },
+        async getAntibodyByImmSeq(seq: number | bigint) {
+          const n = Number(seq);
+          attempts[n] = (attempts[n] ?? 0) + 1;
+          if (n === 2 && attempts[n] < 3) {
+            throw new Error("missing revert data (transient)");
+          }
+          return fakeStruct(n);
+        },
+        async computeKeccakId(_a: number, _f: number, primaryMatcherHash: string, _p: string) {
+          return primaryMatcherHash;
+        },
+      },
+      signer: {},
+    } as unknown as RegistryClient;
+
+    const result = await bootstrapCacheFromRegistry(flakyRegistry, cache, { fetchRetries: 3 });
+    expect(result.fetched).toBe(3);
+    expect(result.missing).toBe(0);
+    expect(attempts[2]).toBe(3); // first call + two retries
+  });
+
   it("does not throw when nextImmSeq itself fails", async () => {
     const cache = new AntibodyCache();
     const reg = {

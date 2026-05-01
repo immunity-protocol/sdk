@@ -108,6 +108,7 @@ export class Immunity {
   #teeVerifierPromise?: Promise<
     ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
   >;
+  #denyKeccakIds?: Set<Hex32>;
   #started = false;
 
   constructor(config: ImmunityConfig) {
@@ -122,6 +123,11 @@ export class Immunity {
     }
     this.#config = config;
     this.#network = resolveNetwork(config.network);
+    if (config.denyKeccakIds && config.denyKeccakIds.length > 0) {
+      this.#denyKeccakIds = new Set(
+        config.denyKeccakIds.map((k) => k.toLowerCase() as Hex32),
+      );
+    }
   }
 
   async start(): Promise<void> {
@@ -181,7 +187,18 @@ export class Immunity {
     // antibody is harmless.
     if (this.#config.bootstrapCacheOnStart !== false) {
       try {
-        await bootstrapCacheFromRegistry(this.#registry, this.#cache, this.#config.bootstrap);
+        // Thread the 0G storage client into bootstrap when available so it
+        // can fetch each antibody's public envelope and rebuild the
+        // ADDRESS seed. Without this, chain-only hydration leaves every
+        // antibody seedless and the AddressMatcher index stays empty —
+        // Tier-1 lookups against the genesis catalog never fire.
+        const storage = this.#signer ? this.#getStorage(this.#signer) : undefined;
+        await bootstrapCacheFromRegistry(
+          this.#registry,
+          this.#cache,
+          this.#config.bootstrap,
+          storage,
+        );
       } catch (err) {
         log.warn("cache bootstrap failed; continuing without prefetch", { err: String(err) });
       }
@@ -205,6 +222,15 @@ export class Immunity {
   async #initTeeVerifier(): Promise<
     ((tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>) | null
   > {
+    // Caller-supplied verifier wins over the default 0G compute path.
+    // Lets agents that can't fund the 0G Compute ledger's 3 OG protocol
+    // floor swap in a hosted-LLM shim with the same callable shape (see
+    // ImmunityConfig.teeVerifier). check-flow doesn't care which one
+    // runs — the outcome shape is identical.
+    if (this.#config.teeVerifier) {
+      log.info("using caller-provided teeVerifier; skipping 0G compute init");
+      return this.#config.teeVerifier;
+    }
     if (!this.#signer) return null;
     const computeProvider = this.#network.computeProvider ?? TESTNET.computeProvider;
     const storageIndexerUrl = this.#network.storageIndexerUrl ?? TESTNET.storageIndexerUrl;
@@ -270,6 +296,7 @@ export class Immunity {
       policy: this.#config.novelThreatPolicy ?? "verify",
       ...(this.#config.onEscalate ? { onEscalate: this.#config.onEscalate } : {}),
       ...(teeVerify ? { teeVerify } : {}),
+      ...(this.#denyKeccakIds ? { denyKeccakIds: this.#denyKeccakIds } : {}),
     });
   }
 
@@ -365,6 +392,24 @@ export class Immunity {
       minProviderOg: minProvider,
     });
     return { ledgerOg: minLedger, providerOg: minProvider };
+  }
+
+  /**
+   * Drop a single antibody from the local cache by keccak id. The
+   * matchers' subscriber wiring fires a "delete" event that clears them
+   * from each Tier-1 index. Returns true when the entry was present and
+   * removed, false if it was already absent.
+   *
+   * Use case: an antibody got published on chain but the running agent
+   * shouldn't act on it (e.g. a known-bad auto-mint that the operator
+   * needs to retire before the chain `slash` can run, or a publisher
+   * we've decided to mute locally). This is a *local* operation only —
+   * subsequent gossip arrivals or a fresh bootstrap can re-add the entry.
+   * Callers responsible for re-applying the drop on those paths if the
+   * filter should be persistent.
+   */
+  dropFromCache(keccakId: Hex32): boolean {
+    return this.#cache?.delete(keccakId) ?? false;
   }
 
   async publisherStats(): Promise<PublisherStats> {

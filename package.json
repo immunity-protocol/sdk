@@ -1,6 +1,6 @@
 {
   "name": "@immunity-protocol/sdk",
-  "version": "0.6.0",
+  "version": "0.6.10",
   "description": "Immunity SDK: decentralized threat intelligence for AI agents on 0G Chain.",
   "license": "Apache-2.0",
   "repository": {

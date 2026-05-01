@@ -59,7 +59,20 @@ export class Tier2LookupClient {
         log.warn("Tier-2 lookup failed; falling through", err);
         return { exists: false } as Tier2LookupResult;
       });
-      if (result.exists && result.antibody) return result.antibody;
+      if (!result.exists || !result.antibody) continue;
+      // Mirror the Tier-1 matcher filter: only ACTIVE entries are real
+      // matches. The Registry contract keeps SLASHED / EXPIRED rows
+      // in `getAntibodyByMatcherHash` for audit trail, but acting on
+      // them would resurrect retired threats — fall through to the next
+      // candidate (or eventually to the policy fork).
+      if (result.antibody.status !== "ACTIVE") {
+        log.debug("Tier-2 hit ignored (status != ACTIVE)", {
+          keccakId: result.antibody.keccakId,
+          status: result.antibody.status,
+        });
+        continue;
+      }
+      return result.antibody;
     }
     return null;
   }

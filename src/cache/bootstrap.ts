@@ -1,5 +1,8 @@
+import { fetchPublicEnvelope } from "../storage/envelope.js";
+import type { StorageClient } from "../storage/indexer.js";
 import { getAntibodyByImmSeq } from "../settlement/read-antibody.js";
 import type { RegistryClient } from "../settlement/registry-client.js";
+import type { Antibody } from "../types/antibody.js";
 import { AntibodyNotFoundError } from "../types/errors.js";
 import { createLogger } from "../util/logger.js";
 import type { AntibodyCache } from "./cache.js";
@@ -23,6 +26,14 @@ export interface BootstrapOptions {
    * so a second bootstrap call (e.g., after a reconnect) is cheap.
    */
   skipExisting?: boolean;
+  /**
+   * Retry transient per-fetch failures (RPC throttling, occasional
+   * `missing revert data` blips on under-replicated read nodes) up to N
+   * times with exponential backoff. Default 3 — three retries handles the
+   * 50-agent thundering-herd against the 0G testnet's 50 req/s cap without
+   * inflating the bootstrap latency for happy-path runs.
+   */
+  fetchRetries?: number;
 }
 
 export interface BootstrapResult {
@@ -38,6 +49,21 @@ export interface BootstrapResult {
    * Counted but not treated as errors.
    */
   missing: number;
+}
+
+export interface BootstrapDeps {
+  registry: RegistryClient;
+  cache: AntibodyCache;
+  /**
+   * Optional 0G storage client. When provided, bootstrap fetches the
+   * public envelope for each antibody and reconstructs the seed (for
+   * ADDRESS type) so the AddressMatcher can index it. Without storage,
+   * antibodies hydrate seedless and Tier-1 lookups never find them —
+   * the original "bootstrap helps the cache stay populated but never
+   * actually fires" bug we hit running 60 agents against a registry
+   * full of pre-published genesis antibodies.
+   */
+  storage?: StorageClient;
 }
 
 /**
@@ -63,9 +89,11 @@ export async function bootstrapCacheFromRegistry(
   registry: RegistryClient,
   cache: AntibodyCache,
   opts: BootstrapOptions = {},
+  storage?: StorageClient,
 ): Promise<BootstrapResult> {
   const concurrency = Math.max(1, opts.concurrency ?? 4);
   const skipExisting = opts.skipExisting !== false;
+  const fetchRetries = Math.max(0, opts.fetchRetries ?? 3);
 
   let total: number;
   try {
@@ -98,16 +126,7 @@ export async function bootstrapCacheFromRegistry(
         if (skipExisting && cache.getByImmSeq(seq)) {
           return { kind: "skipped" } as const;
         }
-        try {
-          const ab = await getAntibodyByImmSeq(registry, seq);
-          cache.put(ab);
-          return { kind: "fetched" } as const;
-        } catch (err) {
-          if (err instanceof AntibodyNotFoundError) {
-            return { kind: "missing" } as const;
-          }
-          throw err;
-        }
+        return fetchOneWithRetry(registry, cache, seq, fetchRetries, storage);
       }),
     );
     for (const r of results) {
@@ -123,4 +142,111 @@ export async function bootstrapCacheFromRegistry(
 
   log.info("bootstrap complete", { total: cap, fetched, skipped, missing });
   return { total: cap, fetched, skipped, missing };
+}
+
+type FetchOutcome =
+  | { kind: "fetched" }
+  | { kind: "skipped" }
+  | { kind: "missing" };
+
+/**
+ * Single-seq fetch with exponential backoff. The 0G testnet's public RPC
+ * fans out reads across replicas with eventually-consistent state; under
+ * heavy load it occasionally returns CALL_EXCEPTION ("missing revert data")
+ * for valid seqs. We treat any non-{@link AntibodyNotFoundError} failure as
+ * transient and retry. After exhausting retries we re-throw so the caller
+ * logs and counts the failure rather than silently ignoring it.
+ */
+async function fetchOneWithRetry(
+  registry: RegistryClient,
+  cache: AntibodyCache,
+  seq: number,
+  maxRetries: number,
+  storage?: StorageClient,
+): Promise<FetchOutcome> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const ab = await getAntibodyByImmSeq(registry, seq);
+      const enriched = storage ? await tryEnrichWithSeed(ab, storage) : ab;
+      cache.put(enriched);
+      return { kind: "fetched" };
+    } catch (err) {
+      if (err instanceof AntibodyNotFoundError) {
+        return { kind: "missing" };
+      }
+      lastErr = err;
+      if (attempt < maxRetries) {
+        const backoff = 250 * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
+        await new Promise((res) => setTimeout(res, backoff));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Reconstruct the seed for ADDRESS-type antibodies from their public 0G
+ * storage envelope. The Registry contract stores only `primaryMatcherHash`,
+ * so a chain-only fetch yields a seedless antibody — the AddressMatcher
+ * silently drops it during indexing and Tier-1 lookups never fire. The
+ * envelope's `matcher` summary publicly exposes the address target, so
+ * we can rebuild the seed without leaking anything that wasn't already
+ * public. SEMANTIC envelopes intentionally redact the marker text (only a
+ * `markerHint` is exposed) — those antibodies still need a live gossip
+ * arrival to populate their seed; we leave them seedless on bootstrap.
+ *
+ * Best-effort: a storage fetch failure (0G indexer down, missing CID)
+ * returns the original seedless antibody so bootstrap never fails over a
+ * single envelope. The future `gossip.notify` for the same keccakId can
+ * still upgrade the entry to seeded.
+ */
+async function tryEnrichWithSeed(
+  ab: Antibody,
+  storage: StorageClient,
+): Promise<Antibody> {
+  if (ab.seed || ab.evidenceCid === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    return ab;
+  }
+  try {
+    const env = await fetchPublicEnvelope(storage, ab.evidenceCid);
+    if (env.matcher.kind === "address") {
+      return {
+        ...ab,
+        seed: { abType: "ADDRESS", chainId: env.matcher.chainId, target: env.matcher.target },
+      };
+    }
+    if (env.matcher.kind === "semantic" && env.matcher.markerHint) {
+      // The envelope publishes a 64-char prefix of the marker (intentional —
+      // see settlement/publish.ts envelopeMatcherFor). For SemanticMatcher
+      // substring scanning that prefix is usually enough: incident content
+      // bundles the canonical marker verbatim, and the prefix is rare enough
+      // that it doesn't false-positive on benign text. SEMANTIC antibodies
+      // whose full markers exceed 64 chars match only on the prefix until a
+      // live gossip arrival upgrades the seed; that's an acceptable
+      // demo-time concession over having no SEMANTIC matches at all.
+      const flavor = env.matcher.flavor as
+        | "instruction"
+        | "behavior"
+        | "context"
+        | "tooluse"
+        | "claim";
+      return {
+        ...ab,
+        seed: {
+          abType: "SEMANTIC",
+          flavor,
+          pattern: { kind: "marker", value: env.matcher.markerHint.toLowerCase() },
+        },
+      };
+    }
+    return ab;
+  } catch (err) {
+    log.warn("envelope fetch failed during bootstrap; antibody hydrates seedless", {
+      imm_seq: ab.immSeq,
+      evidence_cid: ab.evidenceCid,
+      err: String(err).slice(0, 200),
+    });
+    return ab;
+  }
 }

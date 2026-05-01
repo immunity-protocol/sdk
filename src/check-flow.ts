@@ -41,8 +41,31 @@ export interface CheckFlowDeps {
    * the TEE module without dragging the whole `tee/` subtree into this
    * file (the facade may not have TEE configured at all).
    */
-  teeVerify?: (tx: ProposedTx | null, ctx: CheckContext) => Promise<TeeVerifyOutcome | null>;
+  teeVerify?: TeeVerifyFn;
+  /**
+   * Caller-supplied set of antibody keccak ids to ignore at match time.
+   * When a Tier-1 cache hit or Tier-2 lookup hit comes back with a keccak
+   * in this set, check-flow treats it as a miss and continues to the next
+   * tier. Used to mute a known-bad auto-mint locally when the on-chain
+   * `slash` mechanism isn't reachable (e.g. the registry's slash() is
+   * owner-only and the operator doesn't hold the owner key). Lowercase
+   * 0x-prefixed hex strings.
+   */
+  denyKeccakIds?: Set<Hex32>;
 }
+
+/**
+ * Pluggable verifier signature. The default `Immunity.start()` builds one
+ * from the 0G Compute TEE broker via `createTeeVerifier`. Callers can
+ * inject their own implementation (e.g. an Anthropic-backed shim, a local
+ * model gateway, a deterministic stub for tests) by passing `teeVerifier`
+ * on `ImmunityConfig`. Same prompt, same outcome shape, different
+ * inference backend — `check-flow` doesn't care which.
+ */
+export type TeeVerifyFn = (
+  tx: ProposedTx | null,
+  ctx: CheckContext,
+) => Promise<TeeVerifyOutcome | null>;
 
 export interface TeeVerifyOutcome {
   block: boolean;
@@ -75,8 +98,8 @@ export async function runCheck(
   }
 
   const hit = await deps.matchers.matchFirst({ tx, context });
-  if (hit) {
-    const settlement = await settleCheck(deps.registry, hit.antibody.keccakId, txFacts);
+  if (hit && !deps.denyKeccakIds?.has(hit.antibody.keccakId)) {
+    const settlement = await safeSettle(deps, hit.antibody.keccakId, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -88,6 +111,9 @@ export async function runCheck(
       txFacts,
     );
   }
+  if (hit) {
+    log.debug("cache hit suppressed by denylist", { keccakId: hit.antibody.keccakId });
+  }
 
   // Tier 2: chain has the canonical record even when the cache missed. Going
   // through the Registry's matcher index avoids burning a TEE call for any
@@ -95,9 +121,11 @@ export async function runCheck(
   // the next check() this process serves resolves locally.
   if (deps.lookup) {
     const onChain = await deps.lookup.firstMatch(tx, context);
-    if (onChain) {
+    if (onChain && deps.denyKeccakIds?.has(onChain.keccakId)) {
+      log.debug("registry lookup suppressed by denylist", { keccakId: onChain.keccakId });
+    } else if (onChain) {
       deps.cache.put(onChain);
-      const settlement = await settleCheck(deps.registry, onChain.keccakId, txFacts);
+      const settlement = await safeSettle(deps, onChain.keccakId, txFacts);
       return result(
         "block",
         settlement.txHash,
@@ -112,7 +140,7 @@ export async function runCheck(
   }
 
   if (policy === "deny-novel") {
-    const settlement = await settleCheck(deps.registry, null, txFacts);
+    const settlement = await safeSettle(deps, null, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -126,7 +154,7 @@ export async function runCheck(
   }
 
   if (policy === "trust-cache" || !deps.teeVerify) {
-    const settlement = await settleCheck(deps.registry, null, txFacts);
+    const settlement = await safeSettle(deps, null, txFacts);
     const reason =
       policy === "trust-cache"
         ? "trust-cache policy: novel input allowed without verification"
@@ -138,7 +166,7 @@ export async function runCheck(
   // verify mode: ask the TEE
   const verdict = await deps.teeVerify(tx, context);
   if (!verdict || (!verdict.block && !verdict.escalate)) {
-    const settlement = await settleCheck(deps.registry, null, txFacts);
+    const settlement = await safeSettle(deps, null, txFacts);
     return result(
       "allow",
       settlement.txHash,
@@ -153,7 +181,7 @@ export async function runCheck(
 
   if (verdict.block && verdict.publishSeed) {
     const minted = await mintAndAnnounce(deps, verdict);
-    const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null, txFacts);
+    const settlement = await safeSettle(deps, minted?.keccakId ?? null, txFacts);
     return result(
       "block",
       settlement.txHash,
@@ -174,7 +202,7 @@ export async function runCheck(
   // network; without it we'd be flooding the network with low-confidence
   // antibodies. With it, escalate-deny becomes a quality-gated publish.
   const minted = !allowed && verdict.publishSeed ? await mintAndAnnounce(deps, verdict) : null;
-  const settlement = await settleCheck(deps.registry, minted?.keccakId ?? null, txFacts);
+  const settlement = await safeSettle(deps, minted?.keccakId ?? null, txFacts);
   return result(
     allowed ? "allow" : "block",
     settlement.txHash,
@@ -225,6 +253,32 @@ async function runEscalate(deps: CheckFlowDeps, verdict: TeeVerifyOutcome): Prom
     confidence: verdict.confidence,
     matched: [],
   });
+}
+
+/**
+ * Wrapper around `settleCheck` that downgrades on-chain settlement failures
+ * to a logged warning + null tx hash instead of throwing. The cache /
+ * registry / TEE decision has already been computed by the time we settle;
+ * an error here (transient RPC, "no matching receipts found", reorg) must
+ * NOT swallow that decision. Without this, on a flaky public RPC every
+ * cache hit appears as a generic error to the caller — the agent reports
+ * "error" instead of "block", and the dashboard shows zero blocks even
+ * when antibodies are firing correctly.
+ */
+async function safeSettle(
+  deps: CheckFlowDeps,
+  keccakId: Hex32 | null,
+  txFacts: TxFacts,
+): Promise<{ txHash: Hex32 | null }> {
+  try {
+    const s = await settleCheck(deps.registry, keccakId, txFacts);
+    return { txHash: s.txHash };
+  } catch (err) {
+    log.warn("settleCheck failed; returning decision without on-chain record", {
+      err: String(err).slice(0, 200),
+    });
+    return { txHash: null };
+  }
 }
 
 function isContextEmpty(ctx: CheckContext): boolean {
