@@ -218,6 +218,10 @@ export class Immunity {
       confidence: args.verdict.confidence,
       severity: args.verdict.severity,
       reasonSummary: args.verdict.reasoning,
+      // Carry the CRE attestation (set by the CRE-backed verifier after it
+      // verifies the DON signature binds this verdict) so a confirmed novel
+      // threat mints an attested antibody. Absent for non-attested verifiers.
+      ...(args.verdict.attestation ? { attestation: args.verdict.attestation } : {}),
     };
     return args.mode === "corroborate" ? runCorroborate(deps, input) : runPublish(deps, input);
   }
