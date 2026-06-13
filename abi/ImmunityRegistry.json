@@ -755,6 +755,31 @@
       },
       {
         "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "publisher",
+        "type": "address"
+      }
+    ],
+    "name": "ProtectedFlagged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "keccakId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
         "internalType": "uint32",
         "name": "immSeq",
         "type": "uint32"

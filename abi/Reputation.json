@@ -37,6 +37,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "ZeroAmount",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -143,13 +148,19 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "maturePoints",
+        "name": "repBondUnit",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "challengeWonPoints",
+        "name": "maturePointsCap",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "challengeWonCap",
         "type": "uint256"
       },
       {
@@ -202,7 +213,7 @@
   },
   {
     "inputs": [],
-    "name": "challengeWonPoints",
+    "name": "challengeWonCap",
     "outputs": [
       {
         "internalType": "uint256",
@@ -279,7 +290,7 @@
   },
   {
     "inputs": [],
-    "name": "maturePoints",
+    "name": "maturePointsCap",
     "outputs": [
       {
         "internalType": "uint256",
@@ -296,6 +307,11 @@
         "internalType": "address",
         "name": "publisher",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "weight",
+        "type": "uint256"
       }
     ],
     "name": "onChallengeWon",
@@ -309,6 +325,11 @@
         "internalType": "address",
         "name": "publisher",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "weight",
+        "type": "uint256"
       }
     ],
     "name": "onMatured",
@@ -347,6 +368,19 @@
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "repBondUnit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -390,12 +424,17 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "maturePoints_",
+        "name": "repBondUnit_",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "challengeWonPoints_",
+        "name": "maturePointsCap_",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "challengeWonCap_",
         "type": "uint256"
       },
       {
