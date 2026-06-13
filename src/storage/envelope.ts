@@ -1,5 +1,5 @@
 import type { Address, AntibodyType, Hex32 } from "../types/antibody.js";
-import type { StorageClient } from "./client.js";
+import type { PutEvidenceResult, StorageClient } from "./client.js";
 import type { EciesBundle } from "./crypto.js";
 
 /**
@@ -39,7 +39,7 @@ export async function uploadPublicEnvelope(
   client: StorageClient,
   envelope: PublicEnvelopeV1,
   encryptedContext?: EciesBundle,
-): Promise<{ evidenceCid: Hex32; cid: string }> {
+): Promise<PutEvidenceResult> {
   return client.putEvidence(envelope, encryptedContext);
 }
 

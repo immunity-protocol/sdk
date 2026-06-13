@@ -35,9 +35,26 @@ export interface GatewayPayloadV1 {
   encryptedContext?: EciesBundle;
 }
 
-/** The gateway's response to a successful write. */
+/**
+ * The gateway's response to a successful write. The gateway pins the public
+ * evidence envelope and (when present) the encrypted context as SEPARATE IPFS
+ * objects, returning the raw CIDv0 (`Qm…`) string for each.
+ */
 export interface GatewayResponseV1 {
-  cid: string;
+  /** CIDv0 of the pinned public evidence envelope. */
+  evidenceCid: string;
+  /** CIDv0 of the pinned encrypted context — present only when context was sent. */
+  contextCid?: string;
+}
+
+/** On-chain hashes (32-byte digests) plus the raw CIDs the gateway pinned. */
+export interface PutEvidenceResult {
+  /** On-chain `evidenceCid` (the envelope's multihash digest). */
+  evidenceCid: Hex32;
+  /** On-chain `contextHash` — present only when encrypted context was pinned. */
+  contextHash?: Hex32;
+  /** The raw CIDv0 strings the gateway returned. */
+  cids: { evidenceCid: string; contextCid?: string };
 }
 
 export interface StorageClientOptions {
@@ -104,13 +121,14 @@ export class StorageClient {
 
   /**
    * Sign + POST an evidence envelope (and optional encrypted context) to the
-   * storage gateway. Returns the on-chain `evidenceCid` (32-byte digest) plus
-   * the raw CID string the gateway pinned.
+   * storage gateway. Returns the on-chain `evidenceCid` and, when context was
+   * pinned, the on-chain `contextHash` (both 32-byte digests), plus the raw
+   * CIDv0 strings the gateway returned.
    */
   async putEvidence(
     envelope: PublicEnvelopeV1,
     encryptedContext?: EciesBundle,
-  ): Promise<{ evidenceCid: Hex32; cid: string }> {
+  ): Promise<PutEvidenceResult> {
     const payload: GatewayPayloadV1 = encryptedContext
       ? { envelope, encryptedContext }
       : { envelope };
@@ -137,8 +155,19 @@ export class StorageClient {
       throw new Error(`storage gateway write failed: ${res.status} ${res.statusText}`);
     }
     const json = (await res.json()) as GatewayResponseV1;
-    if (!json?.cid) throw new Error("storage gateway response missing cid");
-    return { evidenceCid: cidToHex32(json.cid), cid: json.cid };
+    if (!json?.evidenceCid) throw new Error("storage gateway response missing evidenceCid");
+
+    const result: PutEvidenceResult = {
+      evidenceCid: cidToHex32(json.evidenceCid),
+      cids: { evidenceCid: json.evidenceCid },
+    };
+    // The encrypted context is a separate IPFS object; map its CID to the
+    // on-chain `contextHash` only when context was actually sent and pinned.
+    if (encryptedContext && json.contextCid) {
+      result.contextHash = cidToHex32(json.contextCid);
+      result.cids.contextCid = json.contextCid;
+    }
+    return result;
   }
 
   /**

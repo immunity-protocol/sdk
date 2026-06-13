@@ -114,6 +114,7 @@ export type {
   GatewayRequestV1,
   GatewayPayloadV1,
   GatewayResponseV1,
+  PutEvidenceResult,
   StorageClientOptions,
 } from "./storage/client.js";
 export {
