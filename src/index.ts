@@ -80,7 +80,14 @@ export { buildVerdictPrompt, distillBundle } from "./tee/prompt.js";
 export { parseVerdict } from "./tee/parse.js";
 export type { RawVerdict } from "./tee/parse.js";
 export { CreNovelVerifier, verdictCommitment } from "./tee/cre-verifier.js";
-export type { CreVerifierOptions } from "./tee/cre-verifier.js";
+export type {
+  CreVerifierOptions,
+  EvidenceUploader,
+  NovelVerificationLike,
+  OnChainVerdict,
+  PerCheckEnvelopeV1,
+  UploadedEvidence,
+} from "./tee/cre-verifier.js";
 
 export type {
   ConfidenceThresholds,
