@@ -85,7 +85,24 @@ async function startCtx(label: string, signer: NonceManager) {
     const ctx = await startCtx(`dex-evil-${i}`, signer);
     await ensureRegistered(ctx);
     await ensureDeposit(ctx, BASE_SEPOLIA, [target]);
-    const out = await publishTarget(ctx, BASE_SEPOLIA, "validate", target, ledger);
+    // The gateway gates evidence writes on PublisherRegistrar.isRegistered, read
+    // through its own RPC node. A just-sent registration can lag that node by a
+    // few seconds → a 403 "publisher is not registered". Retry through the lag.
+    let out;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        out = await publishTarget(ctx, BASE_SEPOLIA, "validate", target, ledger);
+        break;
+      } catch (e: any) {
+        const msg = e?.shortMessage || e?.message || String(e);
+        if ((msg.includes("403") || msg.includes("not registered")) && attempt < 6) {
+          console.log(`  gateway 403 (registration not yet visible) — retry ${attempt}/5 in 10s`);
+          await new Promise((r) => setTimeout(r, 10_000));
+          continue;
+        }
+        throw e;
+      }
+    }
     console.log(`  published ${out.keccakId} (${out.skipped ?? "new"})`);
   }
 
