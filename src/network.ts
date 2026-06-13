@@ -1,5 +1,20 @@
+import type { Hex } from "./types/antibody.js";
 import type { NetworkConfig, NetworkPreset } from "./types/config.js";
 import { MissingConfigError } from "./types/errors.js";
+
+/**
+ * Placeholder CRE oracle public key (compressed secp256k1, 33 bytes). Replaced
+ * with the live oracle key when the CRE workflow is wired (separate track).
+ * TODO: set real CRE oracle pubkey at CRE-workflow wiring.
+ */
+const PLACEHOLDER_CRE_ORACLE_PUBKEY =
+  "0x020000000000000000000000000000000000000000000000000000000000000000" as Hex;
+
+/**
+ * Placeholder protocol storage-gateway base URL (signed-POST WRITE target).
+ * TODO: set the live endpoint when the storage-gateway (-app) ships.
+ */
+const PLACEHOLDER_STORAGE_GATEWAY_URL = "https://storage-gateway.immunity.invalid/";
 
 /**
  * Base Sepolia preset — the LIVE Immunity core network.
@@ -13,6 +28,8 @@ export const BASE_SEPOLIA: NetworkConfig = {
   rpcUrl: "https://sepolia.base.org",
   blockExplorerUrl: "https://sepolia.basescan.org",
   lighthouseGateway: "https://gateway.lighthouse.storage/ipfs/",
+  storageGatewayUrl: PLACEHOLDER_STORAGE_GATEWAY_URL,
+  creOraclePublicKey: PLACEHOLDER_CRE_ORACLE_PUBKEY,
   addresses: {
     registry: "0xdB155c21D26b917294BF0e2A1E46C9A14361BF44",
     reputation: "0x0e03F6Ca9e97447E2d97aFbFCe4cBF49202e9F25",
@@ -35,6 +52,8 @@ export const BASE_MAINNET: NetworkConfig = {
   rpcUrl: "https://mainnet.base.org",
   blockExplorerUrl: "https://basescan.org",
   lighthouseGateway: "https://gateway.lighthouse.storage/ipfs/",
+  storageGatewayUrl: PLACEHOLDER_STORAGE_GATEWAY_URL,
+  creOraclePublicKey: PLACEHOLDER_CRE_ORACLE_PUBKEY,
   addresses: {
     registry: "0x0000000000000000000000000000000000000000",
     reputation: "0x0000000000000000000000000000000000000000",

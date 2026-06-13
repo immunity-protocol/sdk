@@ -8,6 +8,8 @@
 
 export type Hex32 = `0x${string}`;
 export type Address = `0x${string}`;
+/** Arbitrary-length 0x-prefixed hex (e.g. a 33-byte compressed pubkey). */
+export type Hex = `0x${string}`;
 
 export const AntibodyTypeValue = {
   ADDRESS: 0,

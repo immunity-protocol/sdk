@@ -1,5 +1,5 @@
 import type { Signer } from "ethers";
-import type { Address } from "./antibody.js";
+import type { Address, Hex } from "./antibody.js";
 import type { NovelThreatPolicy } from "./check.js";
 
 /**
@@ -33,6 +33,18 @@ export interface NetworkConfig {
   blockExplorerUrl: string;
   /** Lighthouse IPFS gateway base (with trailing slash), e.g. ".../ipfs/". */
   lighthouseGateway: string;
+  /**
+   * Protocol storage-gateway base URL (the signed-POST WRITE target). Distinct
+   * from `lighthouseGateway` (the keyless READ base): the gateway holds the
+   * Lighthouse key and pins; the SDK only signs and POSTs. See StorageClient.
+   */
+  storageGatewayUrl: string;
+  /**
+   * Compressed secp256k1 public key (33-byte `0x…`) of the CRE oracle. The SDK
+   * ECIES-encrypts evidence context to this key; only the CRE TEE (privkey in
+   * the Chainlink Vault DON) can decrypt. See `src/storage/crypto.ts`.
+   */
+  creOraclePublicKey: Hex;
   /** Deployed Immunity core contract addresses. */
   addresses: CoreAddresses;
 }
