@@ -62,6 +62,23 @@ export class InsufficientBalanceError extends ImmunityError {
   }
 }
 
+export class NotRegisteredError extends ImmunityError {
+  override readonly name = "NotRegisteredError";
+  constructor() {
+    super(
+      "publisher is not registered — call registerPublisher(label) before publishing",
+      "ERR_NOT_REGISTERED",
+    );
+  }
+}
+
+export class AlreadyRegisteredError extends ImmunityError {
+  override readonly name = "AlreadyRegisteredError";
+  constructor() {
+    super("publisher is already registered", "ERR_ALREADY_REGISTERED");
+  }
+}
+
 export class NetworkError extends ImmunityError {
   override readonly name = "NetworkError";
   constructor(message: string, options?: { cause?: unknown }) {
