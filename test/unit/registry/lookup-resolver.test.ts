@@ -4,7 +4,7 @@ import { hashAddressMatcher } from "../../../src/keccak/matchers/address.js";
 import { hashBytecodeMatcher } from "../../../src/keccak/matchers/bytecode.js";
 import { hashCallPatternMatcher } from "../../../src/keccak/matchers/call-pattern.js";
 import { AddressMatcher } from "../../../src/matchers/address.js";
-import type { CodeFetcher } from "../../../src/matchers/bytecode.js";
+import { BytecodeMatcher, type CodeFetcher } from "../../../src/matchers/bytecode.js";
 import { MatcherRegistry } from "../../../src/matchers/matcher.js";
 import type { RawAntibody, RawEnforcementInputs } from "../../../src/registry/decode.js";
 import { EnforcementResolver } from "../../../src/registry/enforcement.js";
@@ -12,7 +12,7 @@ import { type RegistryReads, Tier2Lookup } from "../../../src/registry/lookup.js
 import { NegativeMatcherCache } from "../../../src/registry/negative-cache.js";
 import { keccak256, toUtf8Bytes } from "ethers";
 import type { Address, Hex32 } from "../../../src/types/antibody.js";
-import { buildAntibody, makeCache } from "../matchers/fixtures.js";
+import { buildAntibody, bytecodeHashFor, makeCache } from "../matchers/fixtures.js";
 
 const CHAIN = 84532;
 const TARGET = "0x00000000000000000000000000000000000000a1" as Address;
@@ -134,6 +134,69 @@ describe("matcher rework: live antibodies surface, tier decided read-side", () =
     const a2 = new AddressMatcher(CHAIN);
     a2.attach(makeCache([expired]));
     expect(await a2.match({ tx: { to: TARGET, chainId: CHAIN }, context: {} })).toBeNull();
+  });
+});
+
+describe("Tier-1 strongest-tier aggregation (matchAll)", () => {
+  it("a cheap advisory ADDRESS hit no longer hides a hard-block BYTECODE hit", async () => {
+    const CODE = "0x6080604052348015" as const;
+    const addrAb = buildAntibody({ abType: "ADDRESS", chainId: CHAIN, target: TARGET });
+    const codeAb = buildAntibody({ abType: "BYTECODE", bytecodeHash: bytecodeHashFor(CODE) });
+    const cache = makeCache([addrAb, codeAb]);
+
+    const address = new AddressMatcher(CHAIN);
+    const bytecode = new BytecodeMatcher(CHAIN, async () => CODE);
+    address.attach(cache);
+    bytecode.attach(cache);
+    const matchers = new MatcherRegistry();
+    matchers.register(address);
+    matchers.register(bytecode);
+
+    const reads = mockReads({
+      inputs: {
+        [addrAb.keccakId]: rawInputs({ corroboration: 0n }), // advisory (cheap, priority 10)
+        [codeAb.keccakId]: rawInputs({ isSeeded: true }), // hard-block (priority 40)
+      },
+    });
+    const resolver = new EnforcementResolver({
+      reads,
+      matchers,
+      cache,
+      negativeCache: new NegativeMatcherCache(),
+      codeFetcher: async () => CODE,
+      chainId: CHAIN,
+    });
+
+    const res = await resolver.resolve({ tx: { to: TARGET, chainId: CHAIN }, context: {} });
+    expect(res.source).toBe("cache");
+    expect(res.tier).toBe("hard-block");
+    expect(res.antibodies).toHaveLength(2);
+  });
+
+  it("dedups a single antibody hit by two matchers", async () => {
+    const ab = buildAntibody({ abType: "ADDRESS", chainId: CHAIN, target: TARGET });
+    const cache = makeCache([ab]);
+    const a1 = new AddressMatcher(CHAIN);
+    const a2 = new AddressMatcher(CHAIN);
+    a1.attach(cache);
+    a2.attach(cache);
+    const matchers = new MatcherRegistry();
+    matchers.register(a1);
+    matchers.register(a2);
+
+    const reads = mockReads({ inputs: { [ab.keccakId]: rawInputs({ corroboration: 0n }) } });
+    const resolver = new EnforcementResolver({
+      reads,
+      matchers,
+      cache,
+      negativeCache: new NegativeMatcherCache(),
+      codeFetcher: EOA,
+      chainId: CHAIN,
+    });
+
+    const res = await resolver.resolve({ tx: { to: TARGET, chainId: CHAIN }, context: {} });
+    expect(res.antibodies).toHaveLength(1);
+    expect(res.tier).toBe("advisory");
   });
 });
 

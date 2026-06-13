@@ -133,4 +133,47 @@ describe("MatcherRegistry", () => {
       }),
     ).toBeNull();
   });
+
+  it("matchAll collects every hit across matchers (no short-circuit)", async () => {
+    const addrAb = buildAntibody({ abType: "ADDRESS", chainId: CHAIN, target: TARGET });
+    const semanticAb = buildAntibody({
+      abType: "SEMANTIC",
+      flavor: "MANIPULATION",
+      pattern: { kind: "marker", value: "rugpull" },
+    });
+    const cache = makeCache([addrAb, semanticAb]);
+    const a = new AddressMatcher(CHAIN);
+    const s = new SemanticMatcher();
+    a.attach(cache);
+    s.attach(cache);
+    const r = new MatcherRegistry();
+    r.register(s);
+    r.register(a);
+
+    const hits = await r.matchAll({
+      tx: { to: TARGET, chainId: CHAIN },
+      context: { conversation: [{ role: "user", content: "rugpull alert" }] },
+    });
+    // Both the ADDRESS and SEMANTIC matchers hit — matchFirst would have stopped
+    // at ADDRESS; matchAll surfaces both, in priority order.
+    expect(hits.map((h) => h.matcherName)).toEqual(["ADDRESS", "SEMANTIC"]);
+  });
+
+  it("matchAll returns an empty array when no matchers hit", async () => {
+    const cache = makeCache([]);
+    const a = new AddressMatcher(CHAIN);
+    const s = new SemanticMatcher();
+    a.attach(cache);
+    s.attach(cache);
+    const r = new MatcherRegistry();
+    r.register(a);
+    r.register(s);
+
+    expect(
+      await r.matchAll({
+        tx: { to: "0x0000000000000000000000000000000000000099", chainId: CHAIN },
+        context: {},
+      }),
+    ).toEqual([]);
+  });
 });
