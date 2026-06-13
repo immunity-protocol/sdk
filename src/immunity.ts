@@ -12,6 +12,7 @@ import { MatcherRegistry } from "./matchers/matcher.js";
 import { SemanticMatcher } from "./matchers/semantic.js";
 import { resolveNetwork } from "./network.js";
 import {
+  type ChallengeManagerLike,
   type Erc20Like,
   type RegistrarLike,
   type RegistryLike,
@@ -22,7 +23,9 @@ import {
   deregister,
   isRegistered,
   registerPublisher,
+  challenge as runChallenge,
   corroborate as runCorroborate,
+  mature as runMature,
   publish as runPublish,
   withdraw,
 } from "./publish/operations.js";
@@ -192,6 +195,7 @@ export class Immunity {
       network: this.#network,
       registrar: this.#contracts.registrar as unknown as RegistrarLike,
       registry: this.#contracts.registry as unknown as RegistryLike,
+      challengeManager: this.#contracts.challengeManager as unknown as ChallengeManagerLike,
       storage: this.#storage as StoragePort,
       usdc: this.#contracts.usdc as unknown as Erc20Like,
     };
@@ -243,5 +247,15 @@ export class Immunity {
    */
   async corroborate(input: PublishInput): Promise<PublishResult> {
     return runCorroborate(this.#writeDeps(), input);
+  }
+
+  /** Challenge an antibody, posting the computed bond. Returns the bond staked. */
+  async challenge(antibodyId: string): Promise<{ bond: bigint; txHash: string }> {
+    return runChallenge(this.#writeDeps(), antibodyId);
+  }
+
+  /** Permissionless poke to promote a matured PROBATION antibody to ACTIVE. */
+  async mature(antibodyId: string): Promise<{ txHash: string }> {
+    return runMature(this.#writeDeps(), antibodyId);
   }
 }

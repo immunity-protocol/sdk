@@ -42,8 +42,16 @@ export interface RegistryLike {
   /** The operator's internal deposited balance (the public `balances` mapping). */
   balances(account: string): Promise<bigint>;
   publish(params: PublishParams): Promise<ContractTx>;
-  /** Reads back the stored antibody — used here for the assigned `immSeq`. */
-  getAntibody(keccakId: string): Promise<{ immSeq: bigint | number }>;
+  mature(antibodyId: string): Promise<ContractTx>;
+  /** Reads back the stored antibody — for the assigned `immSeq` + the bond (challenge sizing). */
+  getAntibody(keccakId: string): Promise<{ immSeq: bigint | number; bondAmount: bigint | number }>;
+}
+
+/** The `ChallengeManager` methods the write surface needs. */
+export interface ChallengeManagerLike {
+  challengeBondBps(): Promise<bigint | number>;
+  minChallengeBond(): Promise<bigint>;
+  challenge(antibodyId: string): Promise<ContractTx>;
 }
 
 /** The evidence-transport methods the publish pipeline needs (a `StorageClient`). */
@@ -64,6 +72,7 @@ export interface WriteDeps {
   network: NetworkConfig;
   registrar: RegistrarLike;
   registry: RegistryLike;
+  challengeManager: ChallengeManagerLike;
   storage: StoragePort;
   usdc: Erc20Like;
 }
@@ -209,6 +218,35 @@ export async function publish(deps: WriteDeps, input: PublishInput): Promise<Pub
  */
 export async function corroborate(deps: WriteDeps, input: PublishInput): Promise<PublishResult> {
   return publish(deps, input);
+}
+
+/**
+ * Challenge an antibody: post a bond `max(minChallengeBond, antibodyBond ×
+ * challengeBondBps / 1e4)` (the ChallengeManager pulls it via `transferFrom`, so
+ * approve the ChallengeManager). Returns the bond staked so the caller knows.
+ */
+export async function challenge(
+  deps: WriteDeps,
+  antibodyId: string,
+): Promise<{ bond: bigint; txHash: string }> {
+  const ab = await deps.registry.getAntibody(antibodyId);
+  const antibodyBond = BigInt(ab.bondAmount);
+  const bps = BigInt(await deps.challengeManager.challengeBondBps());
+  const min = await deps.challengeManager.minChallengeBond();
+  const scaled = (antibodyBond * bps) / 10_000n;
+  const bond = scaled < min ? min : scaled;
+
+  await ensureAllowance(deps.usdc, deps.publisher, deps.network.addresses.challengeManager, bond);
+  const tx = await deps.challengeManager.challenge(antibodyId);
+  await tx.wait();
+  return { bond, txHash: tx.hash };
+}
+
+/** Permissionless poke that promotes a PROBATION antibody to ACTIVE once mature. */
+export async function mature(deps: WriteDeps, antibodyId: string): Promise<{ txHash: string }> {
+  const tx = await deps.registry.mature(antibodyId);
+  await tx.wait();
+  return { txHash: tx.hash };
 }
 
 /** Send + confirm a publish tx, translating known reverts to typed errors. */
