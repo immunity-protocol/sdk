@@ -200,6 +200,64 @@ describe("Tier-1 strongest-tier aggregation (matchAll)", () => {
   });
 });
 
+describe("denyKeccakIds muting", () => {
+  it("a muted sole Tier-1 matcher produces no enforcement", async () => {
+    const ab = buildAntibody({ abType: "ADDRESS", chainId: CHAIN, target: TARGET });
+    const cache = makeCache([ab]);
+    const address = new AddressMatcher(CHAIN);
+    address.attach(cache);
+    const matchers = new MatcherRegistry();
+    matchers.register(address);
+
+    const resolver = new EnforcementResolver({
+      reads: mockReads({ inputs: { [ab.keccakId]: rawInputs({ isSeeded: true }) } }),
+      matchers,
+      cache,
+      negativeCache: new NegativeMatcherCache(),
+      codeFetcher: EOA,
+      chainId: CHAIN,
+      denyKeccakIds: [ab.keccakId],
+    });
+
+    const res = await resolver.resolve({ tx: { to: TARGET, chainId: CHAIN }, context: {} });
+    // Muted out of Tier-1, nothing on chain for it → novel path.
+    expect(res.tier).toBe("none");
+    expect(res.source).toBe("none");
+  });
+
+  it("a muted id among K corroborators still hard-blocks via the others", async () => {
+    const addrHash = hashAddressMatcher({ chainId: CHAIN, target: TARGET });
+    const MUTED = id("muted");
+    const OTHER = id("other");
+    const reads = mockReads({
+      byMatcher: { [addrHash]: [MUTED, OTHER] },
+      inputs: {
+        [MUTED]: rawInputs({ isSeeded: true }),
+        [OTHER]: rawInputs({ corroboration: 3n }), // hard-block on its own
+      },
+    });
+    const cache = new AntibodyCache();
+    const address = new AddressMatcher(CHAIN);
+    address.attach(cache);
+    const matchers = new MatcherRegistry();
+    matchers.register(address);
+
+    const resolver = new EnforcementResolver({
+      reads,
+      matchers,
+      cache,
+      negativeCache: new NegativeMatcherCache(),
+      codeFetcher: EOA,
+      chainId: CHAIN,
+      denyKeccakIds: [MUTED],
+    });
+
+    const res = await resolver.resolve({ tx: { to: TARGET, chainId: CHAIN }, context: {} });
+    expect(res.tier).toBe("hard-block");
+    expect(res.antibodies.map((a) => a.keccakId)).toEqual([OTHER]);
+  });
+});
+
 describe("Tier2Lookup", () => {
   const lookup = (reads: RegistryReads, negativeCache: NegativeMatcherCache, cache = new AntibodyCache()) =>
     new Tier2Lookup({ reads, cache, negativeCache, codeFetcher: EOA, defaultChainId: CHAIN });
