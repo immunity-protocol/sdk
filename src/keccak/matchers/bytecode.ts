@@ -20,6 +20,12 @@ export interface BytecodeMatcherInput {
  * The wrap is intentional: it keeps the protocol uniform across types,
  * so `primaryMatcherHash` is never coincidentally equal to a raw
  * EXTCODEHASH another consumer might also be tracking.
+ *
+ * CROSS-CHAIN BY DESIGN: there is deliberately no `chainId` in this hash. A
+ * BYTECODE antibody is keyed by runtime code alone, so one antibody matches an
+ * identical contract on EVERY chain. This is the point — a drainer redeployed
+ * (same compiler output) on another chain is the same threat and should be
+ * caught network-wide without a fresh publish per chain.
  */
 export function hashBytecodeMatcher(input: BytecodeMatcherInput): Hex32 {
   if (!HEX32_RE.test(input.bytecodeHash)) {

@@ -59,4 +59,46 @@ describe("BytecodeMatcher", () => {
     const hit = await m.match({ tx: { to: TARGET, chainId: CHAIN }, context: {} });
     expect(hit).toBeNull();
   });
+
+  it("returns immediately with no RPC when the probe has no tx.to", async () => {
+    const ab = buildAntibody({ abType: "BYTECODE", bytecodeHash: bytecodeHashFor(CODE) });
+    const cache = makeCache([ab]);
+    let calls = 0;
+    const fetcher = async () => {
+      calls++;
+      return CODE;
+    };
+    const m = new BytecodeMatcher(CHAIN, fetcher);
+    m.attach(cache);
+
+    const hit = await m.match({ tx: null, context: {} });
+    expect(hit).toBeNull();
+    expect(calls).toBe(0);
+  });
+
+  it("matches the same code on two different chains (cross-chain clone detection)", async () => {
+    // One BYTECODE antibody, no chainId in its hash.
+    const ab = buildAntibody({ abType: "BYTECODE", bytecodeHash: bytecodeHashFor(CODE) });
+    const cache = makeCache([ab]);
+
+    // The same runtime code is deployed at different addresses on chains 1 and 8453.
+    const CHAIN_A = 1;
+    const CHAIN_B = 8453;
+    const ADDR_A: Address = "0x00000000000000000000000000000000000000a1";
+    const ADDR_B: Address = "0x00000000000000000000000000000000000000b2";
+    let calls = 0;
+    const fetcher = async () => {
+      calls++;
+      return CODE;
+    };
+    const m = new BytecodeMatcher(CHAIN_A, fetcher);
+    m.attach(cache);
+
+    const hitA = await m.match({ tx: { to: ADDR_A, chainId: CHAIN_A }, context: {} });
+    const hitB = await m.match({ tx: { to: ADDR_B, chainId: CHAIN_B }, context: {} });
+    expect(hitA?.antibody.keccakId).toBe(ab.keccakId);
+    expect(hitB?.antibody.keccakId).toBe(ab.keccakId);
+    // Distinct (chainId,address) cache keys → one fetch each, both resolve to the one antibody.
+    expect(calls).toBe(2);
+  });
 });

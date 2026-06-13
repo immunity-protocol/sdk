@@ -19,8 +19,16 @@ export type CodeFetcher = (chainId: number, address: Address) => Promise<`0x${st
  * Probe path: lookup `tx.to` -> fetch runtime bytecode (one RPC, cached) ->
  * keccak256 -> match against the index of `BYTECODE`-type antibodies.
  *
- * Empty code (EOA / never-deployed addresses) short-circuits without
- * touching the RPC.
+ * CROSS-CHAIN BY DESIGN: the index is keyed by bytecode hash alone (see
+ * `hashBytecodeMatcher`), so a single antibody matches an identical contract
+ * on ANY chain — a redeployed drainer is caught network-wide. Only the code
+ * FETCH is chain-scoped: it uses the probe's own `chainId`
+ * (`probe.tx.chainId ?? defaultChainId`) and the `codeCache` is keyed by
+ * `chainId:address`, so the same address on two chains is fetched independently
+ * but both resolve to the one antibody when their runtime code is identical.
+ *
+ * Empty code (EOA / never-deployed) short-circuits to no match; a probe with
+ * no `tx.to` returns immediately without any RPC.
  */
 export class BytecodeMatcher implements Matcher {
   readonly name = "BYTECODE";
