@@ -187,10 +187,19 @@ export async function matureAndAssert(
     const keccakId = keccakIdOf(t, ctx.address);
     let inputs = decodeEnforcementInputs(await registry.getEnforcementInputs(keccakId));
     let matureTx: string | undefined;
-    if (inputs.status !== "ACTIVE" && corroboration >= k) {
-      const r = await ctx.im.mature(keccakId);
-      matureTx = r.txHash;
-      inputs = decodeEnforcementInputs(await registry.getEnforcementInputs(keccakId));
+    // mature() is a no-op until corroborationOf >= k is observable on the node the
+    // tx executes against; public-RPC load-balancing means a just-confirmed publish
+    // may not be visible to the node that runs the mature tx, so a single mature can
+    // silently no-op. Poll the precondition, mature, confirm ACTIVE, and retry on lag.
+    for (let attempt = 0; attempt < 10 && inputs.status !== "ACTIVE"; attempt++) {
+      const observable = Number(await registry.corroborationOf(t.matcherHash));
+      if (observable >= k) {
+        const r = await ctx.im.mature(keccakId);
+        matureTx = r.txHash;
+        inputs = decodeEnforcementInputs(await registry.getEnforcementInputs(keccakId));
+        if (inputs.status === "ACTIVE") break;
+      }
+      await new Promise((res) => setTimeout(res, 500));
     }
     const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const classified = classifyEnforcement(inputs, k, nowSec);
