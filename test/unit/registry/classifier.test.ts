@@ -93,4 +93,27 @@ describe("classifyEnforcement", () => {
       "advisory",
     );
   });
+
+  it("caps a PROTECTED target at advisory — never hard-block (§9, the C-1 wall)", () => {
+    // A blue-chip (prominenceTier ≥ 1) flagged by K corroborators — or even a
+    // seeded flag — must stay advisory; it can never hard-block (e.g. the Uniswap
+    // router can't be censored by collusion). De-protecting is governance, not a flag.
+    expect(classifyEnforcement(inputs({ prominenceTier: 1, corroboration: 3 }), K, NOW)).toBe(
+      "advisory",
+    );
+    expect(classifyEnforcement(inputs({ prominenceTier: 1, corroboration: 9 }), K, NOW)).toBe(
+      "advisory",
+    );
+    expect(classifyEnforcement(inputs({ prominenceTier: 1, isSeeded: true }), K, NOW)).toBe(
+      "advisory",
+    );
+    // Contrast: a non-protected target with the same corroboration DOES hard-block.
+    expect(classifyEnforcement(inputs({ prominenceTier: 0, corroboration: 3 }), K, NOW)).toBe(
+      "hard-block",
+    );
+    // A protected target still goes dead when slashed/expired (cap doesn't resurrect it).
+    expect(
+      classifyEnforcement(inputs({ prominenceTier: 1, status: "SLASHED", corroboration: 3 }), K, NOW),
+    ).toBe("none");
+  });
 });

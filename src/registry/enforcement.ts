@@ -12,8 +12,9 @@ export type EnforcementTier = "hard-block" | "advisory" | "none";
 /**
  * The two-speed enforcement rule, as a pure function.
  *
- * Hard-block IFF `corroboration >= k` OR `isSeeded`; otherwise advisory. Dead
- * antibodies (SLASHED/EXPIRED/past-TTL) are neither — they return `none`.
+ * Hard-block IFF (`corroboration >= k` OR `isSeeded`) AND the target is NOT
+ * protected — a protected/blue-chip target (prominenceTier ≥ 1) caps at advisory
+ * (§9). Dead antibodies (SLASHED/EXPIRED/past-TTL) are neither — they return `none`.
  *
  * It deliberately does NOT branch on `status === "ACTIVE"`: a later maturation
  * pass can reach ACTIVE via time/volume WITHOUT corroboration, and that must
@@ -28,8 +29,14 @@ export function classifyEnforcement(
 ): EnforcementTier {
   if (i.status === "SLASHED" || i.status === "EXPIRED") return "none";
   if (i.expiresAt !== 0n && i.expiresAt <= nowSec) return "none";
-  if (i.isSeeded || i.corroboration >= k) return "hard-block";
-  return "advisory";
+  const eligible = i.isSeeded || i.corroboration >= k;
+  if (!eligible) return "advisory";
+  // §9: a protected/blue-chip target (prominenceTier ≥ 1) can NEVER hard-block —
+  // advisory max. The contract delegates this cap to the read side; without it, K
+  // colluding publishers (or a single seeded flag) could hard-block the Uniswap
+  // router. De-protecting is a ProtectedSet governance action, not a flag.
+  if (i.prominenceTier >= 1) return "advisory";
+  return "hard-block";
 }
 
 const TIER_RANK: Record<EnforcementTier, number> = { none: 0, advisory: 1, "hard-block": 2 };
