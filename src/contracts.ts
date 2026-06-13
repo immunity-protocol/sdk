@@ -3,6 +3,7 @@ import ChallengeManagerAbi from "../abi/ChallengeManager.json" with { type: "jso
 import CREVerdictReceiverAbi from "../abi/CREVerdictReceiver.json" with { type: "json" };
 import ImmunityRegistryAbi from "../abi/ImmunityRegistry.json" with { type: "json" };
 import MockUSDCAbi from "../abi/MockUSDC.json" with { type: "json" };
+import NovelVerificationAbi from "../abi/NovelVerification.json" with { type: "json" };
 import ProtectedSetAbi from "../abi/ProtectedSet.json" with { type: "json" };
 import PublisherRegistrarAbi from "../abi/PublisherRegistrar.json" with { type: "json" };
 import ReputationAbi from "../abi/Reputation.json" with { type: "json" };
@@ -32,6 +33,9 @@ export const challengeManagerContract = (address: Address, runner: ContractRunne
 export const creReceiverContract = (address: Address, runner: ContractRunner): Contract =>
   new Contract(address, CREVerdictReceiverAbi, runner);
 
+export const novelVerificationContract = (address: Address, runner: ContractRunner): Contract =>
+  new Contract(address, NovelVerificationAbi, runner);
+
 export const usdcContract = (address: Address, runner: ContractRunner): Contract =>
   new Contract(address, MockUSDCAbi, runner);
 
@@ -45,6 +49,7 @@ export function coreContracts(net: NetworkConfig, runner: ContractRunner) {
     protectedSet: protectedSetContract(a.protectedSet, runner),
     challengeManager: challengeManagerContract(a.challengeManager, runner),
     creReceiver: creReceiverContract(a.creReceiver, runner),
+    novelVerification: novelVerificationContract(a.novelVerification, runner),
     usdc: usdcContract(a.usdc, runner),
   };
 }
