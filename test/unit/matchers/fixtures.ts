@@ -12,10 +12,10 @@ export const PUBLISHER: Address = "0x0000000000000000000000000000000000000aaa";
 
 let nextSeq = 1;
 
-export function buildAntibody(seed: AntibodySeed): Antibody {
+export function buildAntibody(seed: AntibodySeed, publisher: Address = PUBLISHER): Antibody {
   const seq = nextSeq++;
   const primaryMatcherHash = primaryHashFor(seed);
-  const keccakId = computeKeccakId(seed.abType, flavorFor(seed), primaryMatcherHash, PUBLISHER);
+  const keccakId = computeKeccakId(seed.abType, flavorFor(seed), primaryMatcherHash, publisher);
   return {
     keccakId,
     immSeq: seq,
@@ -31,7 +31,7 @@ export function buildAntibody(seed: AntibodySeed): Antibody {
     contextHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
     embeddingHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
     attestation: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    publisher: PUBLISHER,
+    publisher,
     reviewer: "0x0000000000000000000000000000000000000000",
     stakeAmount: 1_000_000n,
     stakeLockUntil: 0n,

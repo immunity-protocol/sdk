@@ -23,7 +23,11 @@ export class SemanticMatcher implements Matcher {
   readonly name = "SEMANTIC";
   readonly priority = 50;
 
-  private readonly markers = new Map<string, Antibody>();
+  // marker -> (keccakId -> antibody). Multiple antibodies can share a marker —
+  // distinct publishers corroborating, or different flavors hashing to the same
+  // normalized string — so each is indexed precisely by `keccakId` and the
+  // second never overwrites the first.
+  private readonly markers = new Map<string, Map<Hex32, Antibody>>();
   private readonly markerByKeccak = new Map<Hex32, string>();
 
   attach(cache: AntibodyCache): void {
@@ -37,17 +41,24 @@ export class SemanticMatcher implements Matcher {
   async match(probe: MatchProbe): Promise<MatchHit | null> {
     const haystack = normalizeSemanticText(flattenContext(probe.context));
     if (!haystack) return null;
-    for (const [marker, ab] of this.markers) {
-      if (ab.status !== "ACTIVE") continue;
-      if (haystack.includes(marker)) {
-        return {
-          antibody: ab,
-          matcherName: this.name,
-          reason: `semantic marker "${marker}" matches ${ab.immId}`,
-        };
+    // Pick a deterministic winner across every matching marker so results are
+    // stable regardless of index/cache ordering. Corroboration rank is a
+    // read-side concern not visible here, so the stable tiebreak is the lowest
+    // `immSeq` (earliest-minted) ACTIVE antibody.
+    let best: { ab: Antibody; marker: string } | null = null;
+    for (const [marker, byId] of this.markers) {
+      if (!haystack.includes(marker)) continue;
+      for (const ab of byId.values()) {
+        if (ab.status !== "ACTIVE") continue;
+        if (!best || ab.immSeq < best.ab.immSeq) best = { ab, marker };
       }
     }
-    return null;
+    if (!best) return null;
+    return {
+      antibody: best.ab,
+      matcherName: this.name,
+      reason: `semantic marker "${best.marker}" matches ${best.ab.immId}`,
+    };
   }
 
   private tryIndex(ab: Antibody): void {
@@ -59,14 +70,23 @@ export class SemanticMatcher implements Matcher {
     if (expected !== ab.primaryMatcherHash) return;
     if (ab.seed.pattern.kind !== "marker") return;
     const marker = normalizeSemanticText(ab.seed.pattern.value);
-    this.markers.set(marker, ab);
+    let byId = this.markers.get(marker);
+    if (!byId) {
+      byId = new Map<Hex32, Antibody>();
+      this.markers.set(marker, byId);
+    }
+    byId.set(ab.keccakId, ab);
     this.markerByKeccak.set(ab.keccakId, marker);
   }
 
   private tryUnindex(ab: Antibody): void {
     const marker = this.markerByKeccak.get(ab.keccakId);
     if (!marker) return;
-    this.markers.delete(marker);
+    const byId = this.markers.get(marker);
+    if (byId) {
+      byId.delete(ab.keccakId);
+      if (byId.size === 0) this.markers.delete(marker);
+    }
     this.markerByKeccak.delete(ab.keccakId);
   }
 }
