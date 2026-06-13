@@ -54,4 +54,20 @@ export class MatcherRegistry {
     }
     return null;
   }
+
+  /**
+   * Run every matcher and collect all hits. Unlike `matchFirst`, this does NOT
+   * short-circuit on the first hit: a cheap ADDRESS hit must not hide a costlier
+   * BYTECODE hit that classifies hard-block. The enforcement resolver classifies
+   * each hit and takes the strongest tier — under-classifying (less protection)
+   * is the wrong failure mode for a security tool.
+   */
+  async matchAll(probe: MatchProbe): Promise<MatchHit[]> {
+    const hits: MatchHit[] = [];
+    for (const m of this.matchers) {
+      const hit = await m.match(probe);
+      if (hit) hits.push(hit);
+    }
+    return hits;
+  }
 }

@@ -93,16 +93,23 @@ export class EnforcementResolver {
     // block time for this.
     const nowSec = BigInt(Math.floor(this.now() / 1000));
 
-    // Tier-1: local cache (priority-ordered, short-circuits cheap-first).
-    const hit = await this.matchers.matchFirst(probe);
-    if (hit) {
-      const inputs = await this.enforcementInputs(hit.antibody.keccakId);
-      return {
-        tier: classifyEnforcement(inputs, k, nowSec),
-        antibodies: [hit.antibody],
-        inputs: [inputs],
-        source: "cache",
-      };
+    // Tier-1: local cache. Run ALL matchers (not first-hit) and take the
+    // strongest tier — a cheap advisory hit must not mask a hard-block one.
+    const hits = await this.matchers.matchAll(probe);
+    if (hits.length > 0) {
+      const antibodies: Antibody[] = [];
+      const inputs: EnforcementInputs[] = [];
+      const seen = new Set<Hex32>();
+      let tier: EnforcementTier = "none";
+      for (const hit of hits) {
+        if (seen.has(hit.antibody.keccakId)) continue;
+        seen.add(hit.antibody.keccakId);
+        const i = await this.enforcementInputs(hit.antibody.keccakId);
+        antibodies.push(hit.antibody);
+        inputs.push(i);
+        tier = strongest(tier, classifyEnforcement(i, k, nowSec));
+      }
+      return { tier, antibodies, inputs, source: "cache" };
     }
 
     // Tier-2: on-chain registry lookup over candidate matcher hashes.
