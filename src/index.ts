@@ -37,6 +37,23 @@ export {
 
 export type { EnforcementInputs } from "./types/enforcement.js";
 
+export { isLiveAntibody } from "./types/antibody.js";
+
+export {
+  classifyEnforcement,
+  EnforcementResolver,
+} from "./registry/enforcement.js";
+export type {
+  EnforcementTier,
+  EnforcementResolution,
+} from "./registry/enforcement.js";
+export { ReputationClient } from "./registry/reputation.js";
+export type { PublisherReputation, ReputationReads } from "./registry/reputation.js";
+export { Tier2Lookup } from "./registry/lookup.js";
+export type { RegistryReads } from "./registry/lookup.js";
+export { NegativeMatcherCache } from "./registry/negative-cache.js";
+export { decodeAntibody, decodeEnforcementInputs } from "./registry/decode.js";
+
 export type {
   CheckContext,
   ConversationTurn,
