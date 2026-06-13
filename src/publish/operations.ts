@@ -201,6 +201,16 @@ export async function publish(deps: WriteDeps, input: PublishInput): Promise<Pub
   };
 }
 
+/**
+ * Corroborate an existing matcher: publish under the agent's OWN identity for
+ * the same seed/matcher. The on-chain `keccakId` includes the publisher, so this
+ * is a distinct antibody sharing the `primaryMatcherHash` — driving
+ * `corroboration` toward K (maturation), not colliding with the original.
+ */
+export async function corroborate(deps: WriteDeps, input: PublishInput): Promise<PublishResult> {
+  return publish(deps, input);
+}
+
 /** Send + confirm a publish tx, translating known reverts to typed errors. */
 async function sendPublish(
   deps: WriteDeps,

@@ -22,6 +22,7 @@ import {
   deregister,
   isRegistered,
   registerPublisher,
+  corroborate as runCorroborate,
   publish as runPublish,
   withdraw,
 } from "./publish/operations.js";
@@ -233,5 +234,14 @@ export class Immunity {
    */
   async publish(input: PublishInput): Promise<PublishResult> {
     return runPublish(this.#writeDeps(), input);
+  }
+
+  /**
+   * Corroborate an existing matcher by publishing the same seed under this
+   * wallet's identity — strengthens the signal toward maturation (corroboration
+   * ≥ K). Distinct from the original (the on-chain id includes the publisher).
+   */
+  async corroborate(input: PublishInput): Promise<PublishResult> {
+    return runCorroborate(this.#writeDeps(), input);
   }
 }
