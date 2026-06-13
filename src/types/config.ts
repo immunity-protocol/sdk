@@ -16,6 +16,8 @@ export interface CoreAddresses {
   protectedSet: Address;
   challengeManager: Address;
   creReceiver: Address;
+  /** Tier-3 on-chain trigger: `NovelVerification.requestVerification`. */
+  novelVerification: Address;
   usdc: Address;
   l2registry: Address;
 }
