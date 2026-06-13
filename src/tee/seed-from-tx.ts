@@ -1,4 +1,5 @@
 import { flattenContext } from "../matchers/semantic-flatten.js";
+import { normalizeSemanticText } from "../matchers/semantic-normalize.js";
 import type { AntibodySeed, SemanticFlavor } from "../types/antibody.js";
 import type { CheckContext, ProposedTx } from "../types/context.js";
 import { isAddress, normalizeAddress } from "../util/address.js";
@@ -61,7 +62,10 @@ export function seedFromTx(
           return {
             abType: "SEMANTIC",
             flavor: verdict.flavor,
-            pattern: { kind: "marker", value: marker.toLowerCase() },
+            // Store the normalized marker so the value hashed into
+            // primaryMatcherHash is byte-identical to what the matcher scans
+            // for (M-5): matcher marker == validator-approved marker.
+            pattern: { kind: "marker", value: normalizeSemanticText(marker) },
           };
         }
       }
@@ -168,8 +172,10 @@ function validateMarker(marker: string, ctx: CheckContext): boolean {
   if (collapsed.split(" ").length < MARKER_MIN_WORDS) return false;
   if (MARKER_DENYLIST.has(collapsed)) return false;
 
-  const haystack = flattenContext(ctx).toLowerCase();
-  if (!haystack.includes(marker.toLowerCase())) return false;
+  // Anti-hallucination substring guard, normalized identically to the matcher
+  // (M-5): a marker that passes here is exactly what the matcher will scan for.
+  const haystack = normalizeSemanticText(flattenContext(ctx));
+  if (!haystack.includes(normalizeSemanticText(marker))) return false;
 
   // Flavor presence is enforced by the caller before reaching this point
   // (the SEMANTIC branch in seedFromTx checks verdict.flavor truthiness),

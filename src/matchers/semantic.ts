@@ -3,6 +3,7 @@ import { hashSemanticMatcher } from "../keccak/matchers/semantic.js";
 import type { Antibody, Hex32 } from "../types/antibody.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { flattenContext } from "./semantic-flatten.js";
+import { normalizeSemanticText } from "./semantic-normalize.js";
 
 /**
  * SemanticMatcher: v1 marker-substring scan.
@@ -34,7 +35,7 @@ export class SemanticMatcher implements Matcher {
   }
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
-    const haystack = flattenContext(probe.context).toLowerCase();
+    const haystack = normalizeSemanticText(flattenContext(probe.context));
     if (!haystack) return null;
     for (const [marker, ab] of this.markers) {
       if (ab.status !== "ACTIVE") continue;
@@ -57,9 +58,9 @@ export class SemanticMatcher implements Matcher {
     });
     if (expected !== ab.primaryMatcherHash) return;
     if (ab.seed.pattern.kind !== "marker") return;
-    const lower = ab.seed.pattern.value.toLowerCase();
-    this.markers.set(lower, ab);
-    this.markerByKeccak.set(ab.keccakId, lower);
+    const marker = normalizeSemanticText(ab.seed.pattern.value);
+    this.markers.set(marker, ab);
+    this.markerByKeccak.set(ab.keccakId, marker);
   }
 
   private tryUnindex(ab: Antibody): void {
