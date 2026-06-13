@@ -74,8 +74,9 @@ export type EscalateHandler = (ctx: EscalationContext) => Promise<EscalationDeci
 /**
  * How a consumer treats an antibody that is NOT yet hard-block-eligible
  * (i.e. `corroboration < K` and not genesis-seeded) — the read-side policy
- * knob. Behavior is wired in a later package.
- *   - ignore:      treat advisory antibodies as no-ops (don't even pay a fee)
+ * knob. The check fee is ALWAYS charged; this only governs the protective
+ * action taken on an advisory match.
+ *   - ignore:      take no protective action (allow) but still settle the fee
  *   - escalate:    surface to `onEscalate` for an operator decision
  *   - block:       act on advisory antibodies as if hard-block
  *   - corroborate: publish a corroborating antibody to strengthen the signal
