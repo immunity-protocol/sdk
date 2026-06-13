@@ -135,3 +135,18 @@ export function formatImmId(year: number, immSeq: number): string {
   const padded = String(immSeq).padStart(4, "0");
   return `IMM-${year}-${padded}`;
 }
+
+/**
+ * Whether an antibody is *live* — eligible to surface from Tier-1/Tier-2 at all.
+ *
+ * Live means not terminally dead: not `SLASHED`, not `EXPIRED`, and not past its
+ * TTL. It deliberately says nothing about hard-block vs advisory — that decision
+ * is read-side (`classifyEnforcement`), derived from corroboration/seeding. A
+ * `PROBATION` (advisory) antibody is live and must surface so the read-side can
+ * classify it; the two-speed model requires advisories be visible, not hidden.
+ */
+export function isLiveAntibody(ab: Antibody, nowSec: bigint): boolean {
+  if (ab.status === "SLASHED" || ab.status === "EXPIRED") return false;
+  if (ab.expiresAt !== 0n && ab.expiresAt <= nowSec) return false;
+  return true;
+}

@@ -1,7 +1,7 @@
 import { getBytes, keccak256 } from "ethers";
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashCallPatternMatcher } from "../keccak/matchers/call-pattern.js";
-import type { Antibody } from "../types/antibody.js";
+import { type Antibody, isLiveAntibody } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { logSeedHashMismatch } from "./seed-hash-log.js";
@@ -38,13 +38,15 @@ export class CallPatternMatcher implements Matcher {
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
     if (!probe.tx?.to || !probe.tx.data || probe.tx.data.length < 10) return null;
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const chainId = probe.tx.chainId ?? this.defaultChainId;
     const target = normalizeAddress(probe.tx.to);
     const selector = probe.tx.data.slice(0, 10) as `0x${string}`;
     const argsTemplate = `0x${probe.tx.data.slice(10)}` as `0x${string}`;
 
+    // Surface any LIVE antibody; block-vs-advisory is decided read-side.
     const exact = this.index.get(this.indexKey(chainId, target, selector, argsTemplate));
-    if (exact && exact.status === "ACTIVE") {
+    if (exact && isLiveAntibody(exact, nowSec)) {
       return {
         antibody: exact,
         matcherName: this.name,
@@ -53,7 +55,7 @@ export class CallPatternMatcher implements Matcher {
     }
 
     const selectorOnly = this.index.get(this.indexKey(chainId, target, selector, "0x"));
-    if (selectorOnly && selectorOnly.status === "ACTIVE") {
+    if (selectorOnly && isLiveAntibody(selectorOnly, nowSec)) {
       return {
         antibody: selectorOnly,
         matcherName: this.name,

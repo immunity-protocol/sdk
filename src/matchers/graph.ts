@@ -1,6 +1,6 @@
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashGraphMatcher } from "../keccak/matchers/graph.js";
-import type { Address, Antibody, Hex32 } from "../types/antibody.js";
+import { type Address, type Antibody, type Hex32, isLiveAntibody } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { logSeedHashMismatch } from "./seed-hash-log.js";
@@ -36,6 +36,7 @@ export class GraphMatcher implements Matcher {
   }
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const chainId = probe.tx?.chainId ?? this.defaultChainId;
     for (const addr of this.candidateAddresses(probe)) {
       const key = this.taintKey(chainId, addr);
@@ -43,7 +44,8 @@ export class GraphMatcher implements Matcher {
       if (!ids) continue;
       for (const id of ids) {
         const ab = this.antibodies.get(id);
-        if (ab && ab.status === "ACTIVE") {
+        // Surface any LIVE antibody; block-vs-advisory is decided read-side.
+        if (ab && isLiveAntibody(ab, nowSec)) {
           return {
             antibody: ab,
             matcherName: this.name,

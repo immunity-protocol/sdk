@@ -1,7 +1,7 @@
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashAddressMatcher } from "../keccak/matchers/address.js";
 import { extractCounterparties } from "../tx/extractCounterparties.js";
-import type { Address, Antibody } from "../types/antibody.js";
+import { type Address, type Antibody, isLiveAntibody } from "../types/antibody.js";
 import { chainAddressKey } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { logSeedHashMismatch } from "./seed-hash-log.js";
@@ -46,11 +46,14 @@ export class AddressMatcher implements Matcher {
   }
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const chainId = probe.tx?.chainId ?? this.defaultChainId;
     for (const addr of this.candidateAddresses(probe)) {
       const key = chainAddressKey(chainId, addr);
       const ab = this.index.get(key);
-      if (ab && ab.status === "ACTIVE") {
+      // Surface any LIVE antibody (incl. advisory/PROBATION); the hard-block
+      // vs advisory decision is read-side (classifyEnforcement), not here.
+      if (ab && isLiveAntibody(ab, nowSec)) {
         return {
           antibody: ab,
           matcherName: this.name,

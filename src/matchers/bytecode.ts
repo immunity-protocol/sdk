@@ -1,7 +1,7 @@
 import { keccak256 } from "ethers";
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashBytecodeMatcher } from "../keccak/matchers/bytecode.js";
-import type { Address, Antibody, Hex32 } from "../types/antibody.js";
+import { type Address, type Antibody, type Hex32, isLiveAntibody } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { logSeedHashMismatch } from "./seed-hash-log.js";
@@ -54,6 +54,7 @@ export class BytecodeMatcher implements Matcher {
 
   async match(probe: MatchProbe): Promise<MatchHit | null> {
     if (!probe.tx?.to) return null;
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const chainId = probe.tx.chainId ?? this.defaultChainId;
     const target = normalizeAddress(probe.tx.to);
     const cacheKey = `${chainId}:${target}`;
@@ -67,7 +68,8 @@ export class BytecodeMatcher implements Matcher {
     }
 
     const ab = this.index.get(bytecodeHash);
-    if (ab && ab.status === "ACTIVE") {
+    // Surface any LIVE antibody; block-vs-advisory is decided read-side.
+    if (ab && isLiveAntibody(ab, nowSec)) {
       return {
         antibody: ab,
         matcherName: this.name,

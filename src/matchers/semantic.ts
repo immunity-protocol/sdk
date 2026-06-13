@@ -1,6 +1,6 @@
 import type { AntibodyCache } from "../cache/cache.js";
 import { hashSemanticMatcher } from "../keccak/matchers/semantic.js";
-import type { Antibody, Hex32 } from "../types/antibody.js";
+import { type Antibody, type Hex32, isLiveAntibody } from "../types/antibody.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { flattenContext } from "./semantic-flatten.js";
 import { normalizeSemanticText } from "./semantic-normalize.js";
@@ -45,12 +45,14 @@ export class SemanticMatcher implements Matcher {
     // Pick a deterministic winner across every matching marker so results are
     // stable regardless of index/cache ordering. Corroboration rank is a
     // read-side concern not visible here, so the stable tiebreak is the lowest
-    // `immSeq` (earliest-minted) ACTIVE antibody.
+    // `immSeq` (earliest-minted) LIVE antibody. Block-vs-advisory is decided
+    // read-side (classifyEnforcement), so we surface any live antibody here.
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
     let best: { ab: Antibody; marker: string } | null = null;
     for (const [marker, byId] of this.markers) {
       if (!haystack.includes(marker)) continue;
       for (const ab of byId.values()) {
-        if (ab.status !== "ACTIVE") continue;
+        if (!isLiveAntibody(ab, nowSec)) continue;
         if (!best || ab.immSeq < best.ab.immSeq) best = { ab, marker };
       }
     }
