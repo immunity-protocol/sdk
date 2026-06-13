@@ -191,11 +191,17 @@ export async function matureAndAssert(
     // tx executes against; public-RPC load-balancing means a just-confirmed publish
     // may not be visible to the node that runs the mature tx, so a single mature can
     // silently no-op. Poll the precondition, mature, confirm ACTIVE, and retry on lag.
-    for (let attempt = 0; attempt < 10 && inputs.status !== "ACTIVE"; attempt++) {
+    for (let attempt = 0; attempt < 12 && inputs.status !== "ACTIVE"; attempt++) {
       const observable = Number(await registry.corroborationOf(t.matcherHash));
       if (observable >= k) {
-        const r = await ctx.im.mature(keccakId);
-        matureTx = r.txHash;
+        try {
+          const r = await ctx.im.mature(keccakId);
+          matureTx = r.txHash;
+        } catch {
+          // mature() reverts InvalidStatusTransition if the antibody is already
+          // ACTIVE — a prior attempt that RPC lag hid. Re-read below: if it is now
+          // ACTIVE we're done (benign); otherwise the loop retries.
+        }
         inputs = decodeEnforcementInputs(await registry.getEnforcementInputs(keccakId));
         if (inputs.status === "ACTIVE") break;
       }
