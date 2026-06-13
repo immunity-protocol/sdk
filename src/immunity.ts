@@ -15,17 +15,21 @@ import {
   type Erc20Like,
   type RegistrarLike,
   type RegistryLike,
+  type StoragePort,
   type WriteDeps,
   balanceOf,
   deposit,
   deregister,
   isRegistered,
   registerPublisher,
+  publish as runPublish,
   withdraw,
 } from "./publish/operations.js";
+import type { PublishInput, PublishResult } from "./publish/params.js";
 import { EnforcementResolver } from "./registry/enforcement.js";
 import type { RegistryReads } from "./registry/lookup.js";
 import { NegativeMatcherCache } from "./registry/negative-cache.js";
+import { StorageClient } from "./storage/client.js";
 import type { Address } from "./types/antibody.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
 import type { ImmunityConfig, NetworkConfig } from "./types/config.js";
@@ -35,7 +39,6 @@ import { createLogger } from "./util/logger.js";
 import { resolveSigner } from "./wallet/signer.js";
 
 const log = createLogger("immunity");
-const NOT_IMPL = "not implemented in v1 yet";
 
 /**
  * Top-level SDK facade. Construct once per agent process.
@@ -57,6 +60,7 @@ export class Immunity {
   #contracts?: CoreContracts;
   #resolver?: EnforcementResolver;
   #reads?: RegistryReads;
+  #storage?: StorageClient;
   #verifier: NovelVerifier | undefined;
   #started = false;
 
@@ -80,6 +84,11 @@ export class Immunity {
     this.#signer = resolved.signer;
     this.#provider = resolved.provider;
     this.#contracts = coreContracts(this.#network, resolved.signer);
+    this.#storage = new StorageClient({
+      storageGatewayUrl: this.#network.storageGatewayUrl,
+      lighthouseGateway: this.#network.lighthouseGateway,
+      signer: resolved.signer,
+    });
     this.#buildCheckPipeline(resolved.provider);
     this.#started = true;
     log.info("started", {
@@ -174,12 +183,15 @@ export class Immunity {
 
   /** Assemble the injected write-surface deps from the bound contracts + wallet. */
   #writeDeps(): WriteDeps {
-    if (!this.#started || !this.#contracts || !this.#wallet) throw new NotStartedError();
+    if (!this.#started || !this.#contracts || !this.#wallet || !this.#storage) {
+      throw new NotStartedError();
+    }
     return {
       publisher: this.#wallet,
       network: this.#network,
       registrar: this.#contracts.registrar as unknown as RegistrarLike,
       registry: this.#contracts.registry as unknown as RegistryLike,
+      storage: this.#storage as StoragePort,
       usdc: this.#contracts.usdc as unknown as Erc20Like,
     };
   }
@@ -214,8 +226,12 @@ export class Immunity {
     return balanceOf(this.#writeDeps());
   }
 
-  // TODO(write-package): rebuilt with Lighthouse evidence + bonded publish.
-  async publish(): Promise<never> {
-    throw new Error(`publish(): ${NOT_IMPL}`);
+  /**
+   * Publish an antibody: derive the matcher, upload evidence (ECIES-encrypting
+   * the optional context) to the gateway, and lock the bond from the deposited
+   * balance. Requires the publisher to be registered + the balance funded.
+   */
+  async publish(input: PublishInput): Promise<PublishResult> {
+    return runPublish(this.#writeDeps(), input);
   }
 }

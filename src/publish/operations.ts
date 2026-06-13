@@ -1,7 +1,19 @@
-import type { Address } from "../types/antibody.js";
+import { computeKeccakId } from "../keccak/id.js";
+import type { PutEvidenceResult } from "../storage/client.js";
+import { encryptContext } from "../storage/crypto.js";
+import type { EciesBundle } from "../storage/crypto.js";
+import type { PublicEnvelopeV1 } from "../storage/envelope.js";
+import { type Address, type Hex32, formatImmId } from "../types/antibody.js";
 import type { NetworkConfig } from "../types/config.js";
 import { AlreadyRegisteredError } from "../types/errors.js";
+import {
+  type PublishInput,
+  type PublishParams,
+  type PublishResult,
+  buildPublishParams,
+} from "./params.js";
 import { mapRevert } from "./revert.js";
+import { auxiliaryKeyFor, flavorCodeOf, matcherSummaryFor, primaryMatcherHashFor } from "./seed.js";
 
 /** Minimal shape of an ethers state-changing tx response. */
 export interface ContractTx {
@@ -29,6 +41,17 @@ export interface RegistryLike {
   withdraw(amount: bigint): Promise<ContractTx>;
   /** The operator's internal deposited balance (the public `balances` mapping). */
   balances(account: string): Promise<bigint>;
+  publish(params: PublishParams): Promise<ContractTx>;
+  /** Reads back the stored antibody — used here for the assigned `immSeq`. */
+  getAntibody(keccakId: string): Promise<{ immSeq: bigint | number }>;
+}
+
+/** The evidence-transport methods the publish pipeline needs (a `StorageClient`). */
+export interface StoragePort {
+  putEvidence(
+    envelope: PublicEnvelopeV1,
+    encryptedContext?: EciesBundle,
+  ): Promise<PutEvidenceResult>;
 }
 
 /**
@@ -41,6 +64,7 @@ export interface WriteDeps {
   network: NetworkConfig;
   registrar: RegistrarLike;
   registry: RegistryLike;
+  storage: StoragePort;
   usdc: Erc20Like;
 }
 
@@ -117,4 +141,77 @@ export async function withdraw(deps: WriteDeps, amount: bigint): Promise<{ txHas
 /** The operator's current deposited balance (USDC, 6dp). */
 export async function balanceOf(deps: WriteDeps): Promise<bigint> {
   return deps.registry.balances(deps.publisher);
+}
+
+/**
+ * The full publish pipeline: derive the matcher hash + auxiliary key from the
+ * seed, build and upload the evidence envelope (ECIES-encrypting the optional
+ * context to the CRE oracle), assemble `PublishParams`, and call
+ * `registry.publish`. The bond is debited from the deposited balance inside the
+ * contract — there is NO approval for the publish bond. Returns the (locally
+ * deterministic) `keccakId` plus the on-chain-assigned `immSeq`/`immId`.
+ */
+export async function publish(deps: WriteDeps, input: PublishInput): Promise<PublishResult> {
+  const { seed } = input;
+  const primaryMatcherHash = primaryMatcherHashFor(seed);
+  const auxiliaryKey = auxiliaryKeyFor(seed);
+  const flavor = flavorCodeOf(seed);
+  const keccakId = computeKeccakId(seed.abType, flavor, primaryMatcherHash, deps.publisher);
+
+  // Public, plaintext envelope. `immId` needs the on-chain `immSeq` (assigned at
+  // publish), so it is provisional here; the durable link is `keccakId`. The
+  // real immId is returned in PublishResult.
+  const createdAt = new Date();
+  const envelope: PublicEnvelopeV1 = {
+    schema: "immunity/antibody-envelope/v1",
+    keccakId,
+    immId: "",
+    abType: seed.abType,
+    flavor,
+    publisher: deps.publisher,
+    createdAt: createdAt.toISOString(),
+    reasonSummary: input.reasonSummary,
+    ...(input.attestation ? { attestation: input.attestation } : {}),
+    matcher: matcherSummaryFor(seed),
+  };
+
+  const encrypted = input.context
+    ? encryptContext(input.context, deps.network.creOraclePublicKey)
+    : undefined;
+  const uploaded = await deps.storage.putEvidence(envelope, encrypted);
+
+  const params = buildPublishParams(input, {
+    primaryMatcherHash,
+    auxiliaryKey,
+    evidenceCid: uploaded.evidenceCid,
+    contextHash: uploaded.contextHash,
+  });
+
+  const txHash = await sendPublish(deps, params, keccakId);
+  const ab = await deps.registry.getAntibody(keccakId);
+  const immSeq = Number(ab.immSeq);
+
+  return {
+    keccakId,
+    immSeq,
+    immId: formatImmId(createdAt.getFullYear(), immSeq),
+    evidenceCid: uploaded.evidenceCid,
+    ...(uploaded.contextHash ? { contextHash: uploaded.contextHash } : {}),
+    txHash,
+  };
+}
+
+/** Send + confirm a publish tx, translating known reverts to typed errors. */
+async function sendPublish(
+  deps: WriteDeps,
+  params: PublishParams,
+  keccakId: Hex32,
+): Promise<string> {
+  try {
+    const tx = await deps.registry.publish(params);
+    await tx.wait();
+    return tx.hash;
+  } catch (err) {
+    mapRevert(err, { keccakId });
+  }
 }
