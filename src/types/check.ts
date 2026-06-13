@@ -18,7 +18,7 @@ export type Decision = "allow" | "block" | "escalate";
  * - `cache`: a local matcher hit on a cached antibody (Tier 1).
  * - `registry`: a Registry RPC hit on the matcher index (Tier 2). The local
  *   cache had no record but the chain did; the SDK populated the cache.
- * - `tee`: a 0G Compute TEE inference returned a verdict for a novel input
+ * - `tee`: the CRE/TEE verifier returned a verdict for a novel input
  *   (Tier 3). Only fired when neither the cache nor the chain knew.
  * - `policy`: no matcher hit and no TEE call; the configured policy decided.
  */
@@ -31,7 +31,7 @@ export interface CheckResult {
   confidence: number;
   antibodies: Antibody[];
   reason: string;
-  /** Settlement transaction hash on 0G Chain, or `null` when no on-chain call was made. */
+  /** Settlement transaction hash on Base, or `null` when no on-chain call was made. */
   checkId: Hex32 | null;
   /** True when an `allow` result came from cache miss with no TEE verification. */
   novel: boolean;
@@ -65,7 +65,7 @@ export interface CheckOptions {
 /**
  * What `check()` does on a cache miss.
  *
- * - `verify`: call the 0G Compute TEE to assess novel inputs (default).
+ * - `verify`: call the TEE verifier to assess novel inputs (default).
  * - `trust-cache`: allow novel inputs, set `CheckResult.novel = true` so
  *   operators can audit. Cost-vs-coverage tradeoff.
  * - `deny-novel`: block novel inputs unconditionally. Strictest mode.

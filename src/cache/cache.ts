@@ -1,8 +1,8 @@
 import type { Antibody, Hex32 } from "../types/antibody.js";
 
 /**
- * Listener notified whenever the cache mutates. Matchers and gossip
- * publishers attach handlers to keep their own derived indices in sync.
+ * Listener notified whenever the cache mutates. Matchers and other
+ * subscribers attach handlers to keep their own derived indices in sync.
  */
 export type CacheEventKind = "put" | "delete";
 export type CacheListener = (kind: CacheEventKind, antibody: Antibody) => void;

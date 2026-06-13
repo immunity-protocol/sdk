@@ -20,8 +20,8 @@ import { logSeedHashMismatch } from "./seed-hash-log.js";
  * proposed tx is to look at *what* the agent is about to do, which lives
  * one level deeper than `tx.to` for any token-routed or DEX-routed tx.
  *
- * The index key comes from `Antibody.seed` (carried on gossip envelopes
- * or rebuilt from the public 0G storage envelope on bootstrap, see
+ * The index key comes from `Antibody.seed` (rebuilt from the public evidence
+ * envelope (Lighthouse/IPFS) on bootstrap, see
  * `cache/bootstrap.ts`). Antibodies whose seed never lands stay
  * unindexed; we verify the seed by recomputing the primary-matcher hash
  * and rejecting any mismatch.

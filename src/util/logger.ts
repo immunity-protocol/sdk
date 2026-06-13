@@ -3,7 +3,7 @@
  *
  * Enable specific namespaces via the `IMMUNITY_DEBUG` env var, comma-separated:
  *
- *   IMMUNITY_DEBUG=settlement,gossip node my-agent.js
+ *   IMMUNITY_DEBUG=settlement,cache node my-agent.js
  *
  * `*` enables all. Unset (the default) silences everything below `warn`.
  */

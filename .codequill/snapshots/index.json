@@ -1,0 +1,26 @@
+{
+  "version": "codequill-index:v1",
+  "repo_name": "immunity-protocol/sdk",
+  "updated_at": 1781098364,
+  "items": [
+    {
+      "merkle_root": "32430813bcf89890cafc4b277453478c9c6d75b5eccef47c513f9dc643ddc558",
+      "commit": "fd757323bd9ea44cb139151b2d5e847e4891bafe",
+      "timestamp": 1781098289,
+      "file": ".codequill/snapshots/snapshot-fd757323bd9e.json",
+      "kind": "local",
+      "published": {
+        "snapshot_id": "123f8a5a-0816-4cb8-bcea-ea1a36c62ce8",
+        "published_at": 1781098296,
+        "tx_hash": "0x1d1895ffc7566a89db43305255f1a7c21dbe7826664189c4ee9c7fc23f637a66",
+        "chain_id": 8453,
+        "manifest_cid": "QmPmQ3nZvutyvdMZouvTJTU8VxQwwoRsqx9ouq2aqGe9ur",
+        "wallet_address": "0x3bbf5b72c1923cd76472f062ace65b678c3c6a0d"
+      }
+    }
+  ],
+  "latest": {
+    "local": "32430813bcf89890cafc4b277453478c9c6d75b5eccef47c513f9dc643ddc558",
+    "published": "32430813bcf89890cafc4b277453478c9c6d75b5eccef47c513f9dc643ddc558"
+  }
+}

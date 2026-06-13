@@ -1,0 +1,512 @@
+{
+  "version": "codequill-snapshot:v1",
+  "statement": "This document is a CodeQuill snapshot manifest for repository \"immunity-protocol/sdk\" at commit \"fd757323bd9ea44cb139151b2d5e847e4891bafe\". It lists private path hashes (HMAC-SHA256 with encrypted salt stored in path_map_enc) and file content hashes used to compute the private Merkle root 32430813bcf89890cafc4b277453478c9c6d75b5eccef47c513f9dc643ddc558. It also includes a public content-only root c0674f835b9c1fe5feaae07bc900220c25b1d2f5da7dd2e129d7009aa3e99dba for verification without any path data, according to the CodeQuill snapshot specification v1.",
+  "repo": "immunity-protocol/sdk",
+  "commit": "fd757323bd9ea44cb139151b2d5e847e4891bafe",
+  "merkle_root": "32430813bcf89890cafc4b277453478c9c6d75b5eccef47c513f9dc643ddc558",
+  "content_root": "c0674f835b9c1fe5feaae07bc900220c25b1d2f5da7dd2e129d7009aa3e99dba",
+  "files": [
+    {
+      "path_hash": "00c6cb05f731dac47a4ff29f06a9cb3d53a7ba4efe3a586df79a2f236af94883",
+      "hash": "b7880e947f1213b8d685286690a1c28e21b0a2a242f225d07e3ab224ebd95fd0"
+    },
+    {
+      "path_hash": "014896c99dd60242ab12210aad4705bd37d266719f6211d68d60537463aa6cbe",
+      "hash": "41e77cdaf0ee4b198058f91867ea9fd6cd9c674118c18aefc9e29f0b71d6f775"
+    },
+    {
+      "path_hash": "01cf5dcef620c4ccfb40366912a1830ea51b0b98db8c602baeba750736c6a43c",
+      "hash": "9e3fb9745e756d05164711b8e6ae8edab68969e57f3fb970d4fff6a537cf6128"
+    },
+    {
+      "path_hash": "039b78c48de3433bfca29022d6b90bf8df8e8782283e32f1c1d66dc961246a11",
+      "hash": "f4758adaf6aa60f0767794f3b43cdcac76262ce5e271c551e5300f8499cf892b"
+    },
+    {
+      "path_hash": "0508984fc62cb642a0289bee6912401f8590091572cc9c9f0e54cbe06e4e0a09",
+      "hash": "1c524435d3f659411d0d98bc2f791b09b4ac20ab5be8d0e5ba2bcc18e3c2f6de"
+    },
+    {
+      "path_hash": "074f7e66b593e1bc25cff8cb3c70147e9a0855baa1431a417dd311d76cee0781",
+      "hash": "7f4ef0c7dfce76f5585f942f3c99e103ae782e67932ce05218919928db3a137e"
+    },
+    {
+      "path_hash": "083e3a2e435c42b489a9cb9c3f3970424a19164b16fcc084af46418fc799c66d",
+      "hash": "4001e7287862666c466654afe230e3e7f6e08146dcc0f7ae355da55d0fa9096e"
+    },
+    {
+      "path_hash": "095ca35e123cc7ebc2c20e42a9eb7499aef0de49272a5036018b3dcb02749071",
+      "hash": "33f8641c29122a025de1729def82c567a6a0b322314162bcd430076288582ccd"
+    },
+    {
+      "path_hash": "0e9106ccb596b04b59a98aa65833ff59e208fd822e102fc94323acc7e6752c34",
+      "hash": "cedd7cb6f4c8e52ac9cb8e3e543f94dc6cffb59e733f72249b11766efce6f2cb"
+    },
+    {
+      "path_hash": "15e4acaf8ac2a43bcfa7e93233dea8c464c92ab605b5a975f51e2ae69becc5a3",
+      "hash": "b6900970bf2e37ed5da0a4dba0d93dd55bda368175eebb53cf83a6a8a56c4771"
+    },
+    {
+      "path_hash": "1c66f5a11a112b61545d17017cfd795ffc085a524038a224bca56ca8e4b514d5",
+      "hash": "985583712a96f3160b8797b989763bf69ddd52de92c7f56ec59a5f691ed03252"
+    },
+    {
+      "path_hash": "1c7ed7b569d192dbd64c4ba81e1cb1373ca5a106e83cf99b1a234b10b922c2a3",
+      "hash": "98f3608b0d3f4ef4d3bf2e0cc6691cff881ffc734ecc8b6e5336eb78340b4a59"
+    },
+    {
+      "path_hash": "20939455a04fd3478061e1cf916a0ef02350e2d321328c81c48127b8f81e7490",
+      "hash": "bbbe7c2e31b14742ea0c4bb59a7ec9c98eb883396a2c75b1f612045bd0c17e99"
+    },
+    {
+      "path_hash": "20cd57be9e7f86005a13171b3aa22976d9ef8b4fe3e5152266e2c7612bfc7087",
+      "hash": "869ebe3089b8abd6f12a910c40618d3929fe62571d5d56a9823c91197022cd03"
+    },
+    {
+      "path_hash": "215b771678d3587364f66f1baab4f3be9be4236f959e297b1afe1bc98bed6ecd",
+      "hash": "1ab94e3d03c3de873fe165b963440b7dabe5b57248894f023937676c1b45e2dd"
+    },
+    {
+      "path_hash": "2a044b439c52ad6e3b9ca6fc3b768044a3c0bd3ffe9b656118a1bb970fd25e12",
+      "hash": "06247e05e70050c23b1e1cb6cc4c595c7162c4be54da2661f6ee4c576d0854de"
+    },
+    {
+      "path_hash": "2e644c46a6dce4be48a730b0a812b8df0eb1cd078830a47c0d8c07031013939a",
+      "hash": "f573175784164bdddcb5ed6d84fe22da2463b70563c0eba64c85fe956ab71229"
+    },
+    {
+      "path_hash": "2e8db77a2f2916289b15a6d6b150db8a5d3255ebd9bfafb6fb49ccaad47ceaa8",
+      "hash": "9a11b0484fbd04eb1d9d752bd716916910152e2afaefc84fc51ecd43ed8869ba"
+    },
+    {
+      "path_hash": "2f98015be55a9ef1058377bdc6a86836352358df567987baaa90a9f5f03dcc75",
+      "hash": "de8faa0f3017efd385c91bc2fe5562148ad4c2471db4d3d63bd4695c72529fea"
+    },
+    {
+      "path_hash": "33b2dd9b3bd6b0e802f3863291c4a4c42d00981d6ff8b3089eda223150630bbe",
+      "hash": "c6fd1d18a7b4a3536977d8a67c85780028004fae8921760e3d5773d6f4dda994"
+    },
+    {
+      "path_hash": "37ba6f506ec7eba5c93eb6bab0979ae0642b59aa94f762566a3f88e9abfd4c9c",
+      "hash": "28e058e4054bf1c1c6c702a7b6a60884e173aead7d04e943ea1eeed27f783fbd"
+    },
+    {
+      "path_hash": "3a4f77a801a8b1b0f250e75555280f5badaf246f1666ebb6e85ad57535945ecf",
+      "hash": "27e331180ebbd7fee0ef9c56654757b3bb395990c1ff5c1761564830268d20e5"
+    },
+    {
+      "path_hash": "3c22b1bac3de08ac8da916f7b5be7bf1f615e5cc685fe9faff0c100d56203a6a",
+      "hash": "990bf9c65d93478142aee78ee54804939c13075c960c2baafe5a2d583d444b65"
+    },
+    {
+      "path_hash": "3c7478ab7ea299ba21fdc2cf7d6c8189ee5cf145a1608adb53bb09ae5877180e",
+      "hash": "2ea09e1bd766c22a8229bd13e2d260b61ab57e12a80fbfb24da8ea07cf7efda1"
+    },
+    {
+      "path_hash": "3d95440ab70bbe77b3f8a97205f61274ad0827b6261fe9996a71ed2431065e6e",
+      "hash": "f5410c35bfb4d242f137da5a55cb2f15aeac40571e179ead30bea4850b9c900a"
+    },
+    {
+      "path_hash": "424427dbbc9ac9eed05ec44e94cab9f77ee884bf124726a5ed7566ac71b1fc35",
+      "hash": "e41d1a7a4989040776744ade550121f645ce9c03c0d764fabd315451f57c6799"
+    },
+    {
+      "path_hash": "488edccd2047f2f841b357b0f530c9614a9fddaa2f62e41fd4e24ad93fd617b3",
+      "hash": "349f7905fac9bd765e90563e6c9d371ee744d1a071fba5f27c71ea11f38d8bdf"
+    },
+    {
+      "path_hash": "49c99892bcef8df9f4ea0e456b972449394fd15b03f8ad7a9a46da354768d1fb",
+      "hash": "3d8a2aa048c4210e952109b86e5bddde7ec83062f83eaf436ba35a866e523962"
+    },
+    {
+      "path_hash": "4af11e7bffc9bec3f519131d5374ca23962ea3ea9fa8cea3f771ac3e28ac3d6f",
+      "hash": "2a9a911ee23b972a8a6e53a06a514015d7baf7b904c7eaf47f2acf41ffb52cfb"
+    },
+    {
+      "path_hash": "4c7b3594ab4d84efac080a4ee5ae9a59f6fe351e5e455be513d5ce3fd9b2769c",
+      "hash": "a0948564f98a5f0ad88c32f80b458e15510d259b2dbdce2f3013eb6c49317188"
+    },
+    {
+      "path_hash": "4ca6f8d6972f91077bf50e243d0c0e490b3fd337eb9561889fa6b6f80c339c6d",
+      "hash": "c67c7c1a3b0d093491b0297c87beadb5e638837ba296e19f8beaf7e7e527001a"
+    },
+    {
+      "path_hash": "4e6957ff537206d8d81b7ad6eaaeb0d3fe21c68d142661c3c48383acf2e700af",
+      "hash": "7e86b4a789cc4861230a86678d7b76d5400e315d5fb1a32b172861d438a080a9"
+    },
+    {
+      "path_hash": "4f7394060b7390a23e6f9e48c007ccc916df3f0f103b9ce10e48727ee99e0a03",
+      "hash": "da81c4bdc3e4a981257d4b95e2d1fd3cf661eda1173e74a3593515dc00de940b"
+    },
+    {
+      "path_hash": "534c8f63dc0d38555a8003ebeeffb107dbe215a0618978fe5e3d9ef04f7e95a1",
+      "hash": "e062e7d2a4732aa1bff14ea54196cc34031e87ea37239cc56c8e0eac76922aba"
+    },
+    {
+      "path_hash": "53a18c62274cd7cd306de56de532784fa10f44162e0d88ad03d3eb1795e6c612",
+      "hash": "ccdf4102271b73acde2647847c74da04b8bc31af99526b77497a21a3a228fa9f"
+    },
+    {
+      "path_hash": "55b03c297feca370933c17b8fb0923caf9b270671d31ff0445fe7cbe1c790a7d",
+      "hash": "1f4db51fd3c3e0ec75643d3534f9f6716be7586cb35c75956be5fe78d05ffa4a"
+    },
+    {
+      "path_hash": "57a744424fdabea6a472334956ff7f75433215ccf70215df634c833586fd7159",
+      "hash": "b642306e5a4f3cfb6022c7e178deda0c88eb1ea29df6506b6b5a4ac09e35ee57"
+    },
+    {
+      "path_hash": "59db3ff9e40c64eb9134c0246c2a9229c534baa1e7598dbc04026a870100233d",
+      "hash": "55387ac07899a2668617b26a23ea4dd88d7d89be61ad19b6f0a9b8129492e561"
+    },
+    {
+      "path_hash": "59f1aea9d97a1d1067cdb4f6ef053c604df0bcc233df745d0a281e2a44c9bc4c",
+      "hash": "b3948f1bbc8a88d2d58d91fd411cfbd0327768cea9d3b45c4fd6582cb382da6e"
+    },
+    {
+      "path_hash": "649c50ba6156dc17606348658d27d71e55eeb8f1fd1b3ae75529da1745accea6",
+      "hash": "b2067840f60340fee6b384cc86468f2c7ffdbd79115961a26e5cc6d547e2cbc4"
+    },
+    {
+      "path_hash": "66a77fb7fbf8e010ba6af5898c73166e93424cc814e9e48925f88def4726b52a",
+      "hash": "6bae3dbbe84e84b6f29fc8c682613bcb8c2e5036ebbab2ffad7ee7141b6a916c"
+    },
+    {
+      "path_hash": "6825eb756cd90a88010cb900d5fcbd971151d27b691fb7aaa43eb0f10e8c2ecc",
+      "hash": "32de674569ab99d493be9a696260d3548b52f4a52be05c5f51bca2d22a4f649e"
+    },
+    {
+      "path_hash": "685f20a33e31970a274640a9e974ea0c0ba3eeefc11a27c3c30d22fb5898d0ab",
+      "hash": "82edc9cf712af97e258e3c9193fe5308fbd1bbfb6317a7b02a16bf646b00e0aa"
+    },
+    {
+      "path_hash": "69c942781317bfb086ec2f30150a5924f7f5b561f9a6c65c02f2d15cce60bdea",
+      "hash": "66b199a7c6db5614c68afeb29a5bcf1395997a783c6078c4401775395af04cc4"
+    },
+    {
+      "path_hash": "6c88d03b4b08932baba4b2aae4626a9bf62d3900c18ced7b1b7377dcde3097ed",
+      "hash": "a07adfcf4c6d01b8b38da726f1a00f25bdea711e7d18edef094ee80ab247aa06"
+    },
+    {
+      "path_hash": "72d024e1f0aba143ec21ecf8be638e1366507a5669028ed7ea00798abfbd089c",
+      "hash": "2c983508c4f41cef97234e64226a76af9fb5761fcc904a8ac2887756d95526e7"
+    },
+    {
+      "path_hash": "772a5c137aa4be46ad7e4a37ed7f669efc0893f29d57c7a2d47f94f34ca351e1",
+      "hash": "4030a22b05ab2cdce8a6b8d3c43cc86d78bc96ad81849115d71f800236e0b190"
+    },
+    {
+      "path_hash": "787cc76039d673490614c0c951e79f7ac69d1c74a8f57343d0c611e66cbca37a",
+      "hash": "8e03017f81b3e174702d0a4ce7d573bce8f85b95849459708498d51b07e1302c"
+    },
+    {
+      "path_hash": "79d0249ed14a04125ea05b5335f6e5f8b0503d652741274f0751c88c2c86af6c",
+      "hash": "d0365bee752572f3591176c477adc77c76f292fa003a85160f192e06a603a54b"
+    },
+    {
+      "path_hash": "7c722905d7c5422b8500e92f52b119ca46739ee3286e0d02ef5d45b78bd5c9bc",
+      "hash": "f3154cd7673190dadd127d8af45b6f2740b6cf2f740723e8ec738f4af3ce8d02"
+    },
+    {
+      "path_hash": "7f9e31694e599d2946e7ea4a12354b13c8c3f63584f9ed59a5cfff0a77d69b6a",
+      "hash": "0b083741ed0a2a427a1a0aea9f5a79a32cdb0b4f88dadbf2d53634336d68806c"
+    },
+    {
+      "path_hash": "818679420d688c37dc0461ffebf5110290e7724d4cea9b753299b852566c68cd",
+      "hash": "791abcd9425cabb40a35a6f0c912e08096bc2d65efeaae65a7d770aacc0f30d9"
+    },
+    {
+      "path_hash": "8401fb882f1326feac60bee81ecfe046ca5f30f00580ec09b945dda9c0fede6e",
+      "hash": "31a1f3443db2db4621d6a7be92d1670403b5a0f0bed25fe27032e4b649b93b58"
+    },
+    {
+      "path_hash": "84c7eab40474d2d40cfb39134e9c6977c901a90323dc1d14ec4fc4d0d6ab1bec",
+      "hash": "9d679b18f17e3361d9211614d68a8727feb5c5182a330e9884ce4b8a643ba0c3"
+    },
+    {
+      "path_hash": "8571c5d2802efb31c5c2da412bdd643e81880dd09e70bb0d13422c2fdd51f11f",
+      "hash": "30cc688629d96e4561cb1bd3f79ec6abd0f87a5c3b4990b1685e4ffbaf3d68c1"
+    },
+    {
+      "path_hash": "8926de9a5759efdb4e6cfec417729d5b8a12d1da5c2558188f630881e07b7a48",
+      "hash": "866c990a15eb59fb1c36c1c2bcf0fd735a9a66a178b355014899a7ac3c8c4a4a"
+    },
+    {
+      "path_hash": "8af4d5f07d87d6d5b61d590e5adc52e208261ff9dad267cb3fa440e5850805fa",
+      "hash": "5d4a51634a83d4e39afdb12ef89dba1f0d72a94a7cb13cd512ac6f8c496a2fc9"
+    },
+    {
+      "path_hash": "8bd34377405db4492ca3f1492e4e402dd1d8cb4a98db07f00868d698e86abfdf",
+      "hash": "0f17d07c9c5528020a323de18cf7dedd61978983f4b6cb2c57d35273f50d13d1"
+    },
+    {
+      "path_hash": "8ec52f78606208e46ff3f63d51236622cb7e7b90c00bc44fd7f516c558a6481a",
+      "hash": "f1ab986375ded9c1f02664f8a13d999dece6801c9f1cda9996dffe28f9c5cb36"
+    },
+    {
+      "path_hash": "924bc26ec729aa9f578d9e3afb299845b04b3a20e3cacb3858343ede9081bd65",
+      "hash": "28c34fa8e29449d7af67fe51cecbc896d6fc0b9fce9ab3a0a9815d98f8b23870"
+    },
+    {
+      "path_hash": "94b762f4e1809010a8fda2954b8b1ec0a4a57e538ddaf6ad07c3e5057d60fbab",
+      "hash": "4da3059674e8f6f96f9b764ebda077cbfad5ccb564ad81fb59b5f721d988fa47"
+    },
+    {
+      "path_hash": "94bd98b40e8b2e03748380d65cd0786d2badcb58184315a93c3e00b1b51aaf88",
+      "hash": "8163a53aec2464bfd6e32f12dcde348c5d42b6de00b6a9abbe66549729292224"
+    },
+    {
+      "path_hash": "957ff9a2f818df0e3abab99902a323eff5e410327d4aa8a4e0ce485d43b6a88b",
+      "hash": "47e351a93d109b6e8ad9816651b35dbfc2db6488a12f79343f3050ef20fc687f"
+    },
+    {
+      "path_hash": "9e435205e560c36bf65680d8785a56c3e6750ed9e75eee02ca103d2f580602cc",
+      "hash": "34e11db54dd418281788e38171127efe62428fccc2cac88f3965436c7a3f5a5e"
+    },
+    {
+      "path_hash": "a04e187132ea7356384752da26f77dd0c455c14343cc01fbedfca5dc55c74d71",
+      "hash": "b938911aac6ff8d88ad83dcec9afd4155dc1ab64ef848cf6692921138739e59e"
+    },
+    {
+      "path_hash": "a2e1555790f23a306b6f1a37df4036deceb9d3296f145fe251bfd597a5f77b3d",
+      "hash": "6c23ad8b636fd31b925c53700d1bea5354b6a700a844c4037bbcc513409ef514"
+    },
+    {
+      "path_hash": "a6438dea2c2fe8fc364ba5bf9053ea1ac923bb2600513d76982b7b2f70425abc",
+      "hash": "36f8f4b243e860cec254bf9330d0a4da02f7413a70256aa790d408d98361bf11"
+    },
+    {
+      "path_hash": "a8fa18c062a616bdacf026074a8bc232741d210fde5acd5f261bd15a00f46522",
+      "hash": "6a2c2fe1354d7ffa61b7f3b7c9f539391bec40d5efb152979b62feaa49c5768c"
+    },
+    {
+      "path_hash": "a9eb8b981fbeecb3615e6da3a8bef1a50246c5b61b1abd166ac3c86bd83575ed",
+      "hash": "e64fc2d02903da462d827aab73c7b10f3b8e73cbd3122f6b89140909f22b2770"
+    },
+    {
+      "path_hash": "aba024adc8fc36099682970cd122626060d2f5e7f9f3cff3cfa836c7cb317075",
+      "hash": "e066492447b1e9c635fb84ae1bfa56e1ff468ddffcd827bdc4e57fcfd1ba3384"
+    },
+    {
+      "path_hash": "ad938ab46befd93d9edc9926f55c4aadf317c7bc64ab10a8a539ecdaed962e8c",
+      "hash": "4150b3f9409f6fad6daaf9a8917d20a95e2cb76928eb789d2636c580917a2d56"
+    },
+    {
+      "path_hash": "ae80ab4d0ab6b91e33bcf7908fdfcc0f436805a88a1b7b6ec4429dbf840dfb4f",
+      "hash": "2e9fe1222d86f9ab025bd9263d8f242b4084e2201a16bac0ed08d27004559a55"
+    },
+    {
+      "path_hash": "aedeaacf37abd820c02e94713fd52fc116da72bd8526d7d5f27ead19defe45f0",
+      "hash": "3d54815133ce7ba908b2b552a87e6994eb4f1d1f59a0c83020007125a546bfe2"
+    },
+    {
+      "path_hash": "b0c5e36a458b980559ad2edde673e9c3ff470ebfa633a5fe0a22b6231639ef29",
+      "hash": "651b92f3678a50c0e2a9193aa04c2b3e58f959cf363b32afa79cb03407c92189"
+    },
+    {
+      "path_hash": "b2504cf0edcbd05e45b457a01f80ca95f31012a7a8a08db8094b567f64aeb6b2",
+      "hash": "0ce38b74b342b6d33bef7ed0b7cb9c3b5cf014b78b9fb0b47d3c237d5db9972f"
+    },
+    {
+      "path_hash": "b27ffee4d1e78641fcc1bc4020ae9f237ea8b881b959146c2da632826e577e84",
+      "hash": "868e8ffade812ba6b8e33ed7c9cc88cfceb9b83da8144e5e75b375a431664dcb"
+    },
+    {
+      "path_hash": "b2cd0de02349239daac632ce0d61b2593b0e3696dfee285406ff8ec9bd3b4c3f",
+      "hash": "21c57fe1ad18683b716ab3f94c5e84fe5f0be2d0cd0b24d8f4d4ef9db45920a9"
+    },
+    {
+      "path_hash": "b4f376f4c4354be95803e2cc12cb7522bf7dc298288eadb971ae73e2db13c380",
+      "hash": "f48770879ee7e488e5d6a319dfaa914531751e5a19bfadcf383f4ddb0713ce39"
+    },
+    {
+      "path_hash": "b6b1d2a9b8e09f0cfb6f7136c52d96fd6ba3cf49a46569f857d389722bab70e4",
+      "hash": "64b76885b6a8930015628a1e61e98187d8694615b53d74560c022d8419c852ca"
+    },
+    {
+      "path_hash": "bae6f3742125f0d966b2ec57ceedfda1049bf5b0846aec093ef8c76440a83e1f",
+      "hash": "bf2272ae5eadec4e0a0dc6c2639aa135e29a9adf50a1da27538dc88fe46595b6"
+    },
+    {
+      "path_hash": "bdbfc15d1bc2909f5234d3808f823fb171eaf00d089768ec08b788ed513be004",
+      "hash": "54ad2a85f758a12aaf67861a997b894329aadbf7a28d99ae530c1f4287782401"
+    },
+    {
+      "path_hash": "bdd865e3ac038e876a57c8777e06dc67ab3b16da694e3f9908c7c175c2e2c70d",
+      "hash": "d268d16b7f5f090415bf61290956b70b1a4275258507ad64a7f4434dd43165a3"
+    },
+    {
+      "path_hash": "c4f722eec7cb755a0e58d7de06a1efb001311c4b40dd34bd82a2db13feedd70f",
+      "hash": "a22eecb16356acb6863f78362e0b21888ec33d803eeb514390b36c03f09777e3"
+    },
+    {
+      "path_hash": "c5c0b22e29631bdc5f5a4617c3a817f71e89061668868546a0c241460de9ec28",
+      "hash": "1a07cb3296974839f6667f1d6808dfb3b7d9751a0569c2d642a8a363aa5a9239"
+    },
+    {
+      "path_hash": "c6203652012baa3dfe5df9f676cf09a8a07836149e80ffe69a9dab88868b1f77",
+      "hash": "cd9517d7833005f05e0ae8df823a94dd640f0194881994f70076f71cb4739ad3"
+    },
+    {
+      "path_hash": "cab907a86c4e17d6e4f7bc1fde3e7b842536123c9961e29d08b74b06fea7eb3a",
+      "hash": "798fa194af7b612decf31ba515bb855c8f3b92bceebc141534befc46d1c900cc"
+    },
+    {
+      "path_hash": "ccc733885d0bb88ec7d8f2f5cd4aed044c463316f388f7f9aa1fc6858b0371c4",
+      "hash": "50846d9fb4ebe9c88c3913defab0683ba1b08d731920c0d192e6bc0a3786491c"
+    },
+    {
+      "path_hash": "cd4b5b2578d6d364ccedfa7b7e7b8ef8053843cc093834aac0c0a0359ad7e51d",
+      "hash": "19b7843eaf9715c9c0375da2b0071b08fef8df4a2225a8c8ff9636cab48e059a"
+    },
+    {
+      "path_hash": "ce8786bded7971f4e775c7f768d9060ab8d7b6e3fe29e67527eb3993b203de0f",
+      "hash": "31e6c8f28e9417de64dd8abeeab4a31a9aac2d90cf0aa4e09830121814c47015"
+    },
+    {
+      "path_hash": "d179517d4d6f91e192e957b1f1b16081e46b8459be919ad1ced0202cd8ad6c2d",
+      "hash": "47c6b17e66622a75b262ece26ba912ddc7a22f5e38f880456adb694e9c948e00"
+    },
+    {
+      "path_hash": "d2fd2294a67a94c06d2d7f1d959ac3ce3506240859e5394b6a6f398f2f5745fe",
+      "hash": "afaf7067fcca71b6979a2be6a8a42c8399a4a770f67e3df527e313aec5888e80"
+    },
+    {
+      "path_hash": "d35b53eefbab59e74d8569d936255a1e72eeab981e7ae1e53c3299bfc2352ba8",
+      "hash": "b851b3cbb37062ee4156479502a64cf72e28c40e90c027fe9ac797ab2a04566f"
+    },
+    {
+      "path_hash": "d74969f9007a1adad871b54498f5cb024e5f18b10edd307699bba594758d2b7b",
+      "hash": "3b38cc610a2b6ca70119dbe038254eba26bef0b45dfd5347bec20855fb4c25fd"
+    },
+    {
+      "path_hash": "dc3326ffa1e24fa244aae9d3d958ae391df64045d6a29ff7a8745d9c490e9b6e",
+      "hash": "3cd378cafb33f0a304bfbe4d4655bc912a2bcd9a115500387781ae9156aa2461"
+    },
+    {
+      "path_hash": "df847f5362fabee53ea3da24cf1afa66216b456f267e15a4f1aa9e6c501219c0",
+      "hash": "0d6214737ad8f50b5d853f0ce74fa5e5696baf4d69ad5eb809b476f8dfbd04a5"
+    },
+    {
+      "path_hash": "e3503a15c14cc4c22afbcd19f2ff6b2667e66b9a9d62537061827ff4a6c4708f",
+      "hash": "6238e084d6b6d44c53ec6abd4f539ce323fb90940bde3bcd3ab127e6acf49e58"
+    },
+    {
+      "path_hash": "e560d66f3df5b61a5051ae6771b937c6dd070e5d4a9f2ac86323e97524fbc113",
+      "hash": "187bf0e0b86326ed935f0fcc7d671abce377a09e4b7ae44715413173ee9e21c8"
+    },
+    {
+      "path_hash": "e5bb26631df14002a214e85e5ce13f6dbfa50a9d2b0467fb59cd57f8bb4fdf0b",
+      "hash": "be1433d447c12ad985be18e3e2a91823c3ab3c02fc8292cfb52969ead1001d82"
+    },
+    {
+      "path_hash": "e66710d7b9bde5a31bf588c7a6d78c9538a184c2f5bc6f3bc4c18626c43dd67a",
+      "hash": "96c6d2237c0a284c6fa27fa708fd7fea23c2e480a5cf302151db8cf6095d6165"
+    },
+    {
+      "path_hash": "e6de1926ba163f44ac71452d191eda90f712aaefb31a91a3cba8fd9edf789763",
+      "hash": "63568a2bb96c66e920a4a7c60e1d8cbd48a779d931317c711adee95e70076913"
+    },
+    {
+      "path_hash": "e91e1228397845deaee5a86852a740dce2b2224b8f414361aa858e6ec54f0991",
+      "hash": "cf7323553a64a462fde9db16e17c59df44edc331eb6a38e7d24b1b68f0f263ee"
+    },
+    {
+      "path_hash": "e9d31d16ab2de30f3864288d7d48c76cd1f5ee3c4f9c84356fc302f08b22e375",
+      "hash": "ba6c76cc9f5b580cc8eaf0dc88814041a222990fe92f25660383b0afd9125c18"
+    },
+    {
+      "path_hash": "ead0ca610cfd898f9298780994b11da2e6f7b79aa6908c1d49194fcee91ad513",
+      "hash": "01e4131d84dc5d4982f50d7bbd3a474838f6dbf049e3d1de91cd106989a64fe6"
+    },
+    {
+      "path_hash": "ec223ac1daa2ba62751a9948ba7e66b7cc6cacfd673d64358a580ca7be56e56f",
+      "hash": "8c6335462a938e3277f2df32d53e24f8ee8da90d9717238664345800ea40b07e"
+    },
+    {
+      "path_hash": "ed697f080e538f3fe9952317158326d0b0dc8315e13495c3f38090ce3a110383",
+      "hash": "552b5fa4ba7148b115ef8f3d78d474093d7004e08171c4b65a6fe1006513b9d6"
+    },
+    {
+      "path_hash": "f1b8b92d0f1a4979f983b1b7a587d8189e23cf4f2d8df4be036671fd4aa60fde",
+      "hash": "5341477bbc88254135ddca93b92e83bbcfa44858c13f3d8675bc221675ef0a7d"
+    },
+    {
+      "path_hash": "f2518c22b0ed2fd230a4cd773d3717411754cbc913fe4d589353f9ad7b167002",
+      "hash": "40c55373bf98a4b89eb161efb932490dd6e49db78f79ca052ca2d41ef19b4703"
+    },
+    {
+      "path_hash": "f297eeec144754bb453ccd8b7b01ce502ffa4aa5577b94209595a86206273bfa",
+      "hash": "8b42c62a66ac6c150b4a6b647f53095fa781d0af9be6885d6ddc900c7797dd23"
+    },
+    {
+      "path_hash": "f5b428936f09a9ac82dafc0fcc378a41b2efcde292ee5ee8d65c066a96b90811",
+      "hash": "b41dcef331d1c119c7ca7924cea073d075fd12051c9bfd1f51c50bff7693c7d6"
+    },
+    {
+      "path_hash": "f6b6d35875f323c7e86d9fac6ae4be5b7a889024f87ffd5d5ecb214611967b3c",
+      "hash": "4c91b24d49a5bf4ad95fad689a7bcef44a6314c947cbf58ef566fb9dd1fbead4"
+    },
+    {
+      "path_hash": "f857b8ae5352f1d461e9586637ab76b4417c4cb9f26112e706d4e4ef5d5e8ddc",
+      "hash": "2640a910f6b281c25b45918a0380162ff66316f92d39f915014e4f03896a780d"
+    },
+    {
+      "path_hash": "f9d721d2ccbb051b6a7f5988cff0ba5b7f2c1153e929ae5e219f20fc9a87a5c8",
+      "hash": "910422675341db1c24555cbb668a93fb44c28fc23257b6a302f5dcc6d3fa1de0"
+    },
+    {
+      "path_hash": "fbcaef82d7fe0db19affd6222db6aa17e7fe9cf8d7b24bd58c8964f27a7387e9",
+      "hash": "962a7beeaa227ffa6539168f41a4faa3f021b1bd5af48b5807305ef4cd5a879e"
+    },
+    {
+      "path_hash": "ff8330d713f5b03267b65c8c97c01c41b1ceef345f2a7f924a6470329f1e2730",
+      "hash": "3a7d1651225d8bd4c08890da1696e1468d405b56349940826d3595e051d45902"
+    },
+    {
+      "path_hash": "ff9c2f8942c8e1aae251a355d701433c26eeca0d7da5abad170fffd474604246",
+      "hash": "0136a92be3e25af124abc620d207430313de063e830634df462b858fba2eaca7"
+    },
+    {
+      "path_hash": "ffde62b1473326ef8d1d6d672a4ca0ca91c71f4fec89e6e48bcb429dffc2bc0b",
+      "hash": "d7641e3063222854fb6092e75f069732a63fd4467d862c0e05e7dea24263eba9"
+    }
+  ],
+  "hashing": {
+    "algo": "keccak256",
+    "pathHash": "hmac-sha256(path_salt, utf8(path))",
+    "file": "keccak(fileBytes)",
+    "leaf": "keccak(0x00||pathHash||fileHash)",
+    "node": "keccak(0x01||left||right)",
+    "leafSort": "lexicographic hex of leaf hash",
+    "oddRule": "duplicate_last",
+    "pathSalt": {
+      "storage": "encrypted",
+      "location": "path_map_enc",
+      "payload": "codequill-pathmap:v1",
+      "field": "salt_hex"
+    },
+    "contentRoot": {
+      "leaf": "keccak(0x00||fileHash)",
+      "node": "keccak(0x01||left||right)",
+      "leafSort": "lexicographic hex of leaf hash",
+      "oddRule": "duplicate_last"
+    }
+  },
+  "path_map_enc": {
+    "scheme": "codequill-envelope:v1",
+    "cipher": "aes-256-gcm",
+    "iv_b64": "3Of/GivOgciJ50QR",
+    "tag_b64": "/LYXFezanOxG1+KdZ4ueKQ==",
+    "dek_wrap": "x25519-sealedbox",
+    "wrapped_dek_b64": "bdaLQg/m1uEioq3IQi95deJuUJo69XE1+zyMkD0V90XiutlmUv7OYchN0KbccvnEe167QPzO6JIXMqny6B7ShKtktaNHBFdrmwxnXICKWM4=",
+    "ciphertext_b64": "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",
+    "recipient": {
+      "type": "workspace"
+    }
+  },
+  "timestamp": 1781098289,
+  "generator": {
+    "name": "codequill-cli",
+    "version": "0.12.1"
+  }
+}

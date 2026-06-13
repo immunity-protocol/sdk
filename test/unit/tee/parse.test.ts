@@ -51,7 +51,7 @@ describe("parseVerdict", () => {
   });
 
   it("coerces flavor to null when abType is not SEMANTIC", () => {
-    // qwen sometimes returns a flavor on ADDRESS / CALL_PATTERN despite the
+    // the LLM sometimes returns a flavor on ADDRESS / CALL_PATTERN despite the
     // prompt; the parser silently drops it instead of rejecting the verdict.
     const v = parseVerdict(
       JSON.stringify({

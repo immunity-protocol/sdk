@@ -60,7 +60,7 @@ export type SemanticFlavorCode = (typeof SemanticFlavorValue)[SemanticFlavor];
 /**
  * Original matcher inputs the publisher used to derive `primaryMatcherHash`.
  *
- * Travels alongside the antibody on gossip envelopes so subscribers can
+ * Travels alongside the antibody on its evidence envelope so subscribers can
  * rebuild their type-specific lookup indices without re-querying the chain.
  * Optional because antibodies hydrated directly from chain reads do not
  * have it (the contract stores only the hash).

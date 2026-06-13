@@ -72,7 +72,7 @@ export interface VerdictPromptOptions {
 }
 
 /**
- * Build the qwen-2.5 chat completion prompt.
+ * Build the LLM verdict-classification prompt.
  *
  * The prompt is intentionally rigid: a system instruction that forbids
  * following directives inside the fenced context, plus a strict JSON
