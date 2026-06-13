@@ -14,10 +14,14 @@ import { resolveNetwork } from "./network.js";
 import {
   type Erc20Like,
   type RegistrarLike,
+  type RegistryLike,
   type WriteDeps,
+  balanceOf,
+  deposit,
   deregister,
   isRegistered,
   registerPublisher,
+  withdraw,
 } from "./publish/operations.js";
 import { EnforcementResolver } from "./registry/enforcement.js";
 import type { RegistryReads } from "./registry/lookup.js";
@@ -175,6 +179,7 @@ export class Immunity {
       publisher: this.#wallet,
       network: this.#network,
       registrar: this.#contracts.registrar as unknown as RegistrarLike,
+      registry: this.#contracts.registry as unknown as RegistryLike,
       usdc: this.#contracts.usdc as unknown as Erc20Like,
     };
   }
@@ -192,6 +197,21 @@ export class Immunity {
   /** Whether the connected wallet is a registered publisher. */
   async isRegistered(): Promise<boolean> {
     return isRegistered(this.#writeDeps());
+  }
+
+  /** Deposit USDC into the operator balance (funds check fees + publish bonds). */
+  async deposit(amount: bigint): Promise<{ txHash: string }> {
+    return deposit(this.#writeDeps(), amount);
+  }
+
+  /** Withdraw USDC from the operator balance back to the wallet. */
+  async withdraw(amount: bigint): Promise<{ txHash: string }> {
+    return withdraw(this.#writeDeps(), amount);
+  }
+
+  /** The operator's current deposited balance (USDC, 6dp). */
+  async balanceOf(): Promise<bigint> {
+    return balanceOf(this.#writeDeps());
   }
 
   // TODO(write-package): rebuilt with Lighthouse evidence + bonded publish.

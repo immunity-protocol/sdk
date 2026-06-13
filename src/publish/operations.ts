@@ -23,6 +23,14 @@ export interface RegistrarLike {
   deregister(): Promise<ContractTx>;
 }
 
+/** The `ImmunityRegistry` write/read methods the write surface needs. */
+export interface RegistryLike {
+  deposit(amount: bigint): Promise<ContractTx>;
+  withdraw(amount: bigint): Promise<ContractTx>;
+  /** The operator's internal deposited balance (the public `balances` mapping). */
+  balances(account: string): Promise<bigint>;
+}
+
 /**
  * The injected dependency bag for the write surface. Each contract is a minimal
  * STRUCTURAL interface so a real ethers `Contract` satisfies it via a cast and
@@ -32,6 +40,7 @@ export interface WriteDeps {
   publisher: Address;
   network: NetworkConfig;
   registrar: RegistrarLike;
+  registry: RegistryLike;
   usdc: Erc20Like;
 }
 
@@ -82,4 +91,30 @@ export async function deregister(deps: WriteDeps): Promise<{ txHash: string }> {
 /** Whether the publisher is a registered publisher (read-only). */
 export async function isRegistered(deps: WriteDeps): Promise<boolean> {
   return deps.registrar.isRegistered(deps.publisher);
+}
+
+/**
+ * Fund the operator balance: approve USDC to the registry (if needed) and
+ * `deposit(amount)`. This balance pays check fees AND publish bonds (the bond
+ * is debited from it inside `_publish`, not pulled via transferFrom).
+ */
+export async function deposit(deps: WriteDeps, amount: bigint): Promise<{ txHash: string }> {
+  if (amount <= 0n) throw new Error("deposit amount must be greater than 0");
+  await ensureAllowance(deps.usdc, deps.publisher, deps.network.addresses.registry, amount);
+  const tx = await deps.registry.deposit(amount);
+  await tx.wait();
+  return { txHash: tx.hash };
+}
+
+/** Withdraw from the operator's free balance back to the wallet. */
+export async function withdraw(deps: WriteDeps, amount: bigint): Promise<{ txHash: string }> {
+  if (amount <= 0n) throw new Error("withdraw amount must be greater than 0");
+  const tx = await deps.registry.withdraw(amount);
+  await tx.wait();
+  return { txHash: tx.hash };
+}
+
+/** The operator's current deposited balance (USDC, 6dp). */
+export async function balanceOf(deps: WriteDeps): Promise<bigint> {
+  return deps.registry.balances(deps.publisher);
 }
