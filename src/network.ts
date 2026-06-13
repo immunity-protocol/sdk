@@ -3,9 +3,9 @@ import type { NetworkConfig, NetworkPreset } from "./types/config.js";
 import { MissingConfigError } from "./types/errors.js";
 
 /**
- * Placeholder CRE oracle public key (compressed secp256k1, 33 bytes). Replaced
- * with the live oracle key when the CRE workflow is wired (separate track).
- * TODO: set real CRE oracle pubkey at CRE-workflow wiring.
+ * Placeholder CRE oracle public key (compressed secp256k1, 33 bytes). Used only
+ * by Base MAINNET, where the CRE workflow is not yet deployed (testnet-first).
+ * Replace with the mainnet oracle key when CRE is deployed there.
  */
 const PLACEHOLDER_CRE_ORACLE_PUBKEY =
   "0x020000000000000000000000000000000000000000000000000000000000000000" as Hex;
@@ -13,7 +13,8 @@ const PLACEHOLDER_CRE_ORACLE_PUBKEY =
 /**
  * Live Base Sepolia CRE oracle public key (compressed secp256k1). The SDK
  * ECIES-encrypts evidence context to this; only the CRE TEE holds the matching
- * private key (Chainlink Vault DON). Source: the immunity-cre-workflow oracle keypair.
+ * private key (Chainlink Vault DON). Source: the immunity-cre-workflow oracle
+ * keypair (ORACLE_PRIVATE_KEY) — verified to derive to this compressed pubkey.
  */
 const BASE_SEPOLIA_CRE_ORACLE_PUBKEY =
   "0x0286bb5ddb6912da9d9c7c0d3df9664ac3d6440c1ab0929ae02423d1ce60fe35e5" as Hex;

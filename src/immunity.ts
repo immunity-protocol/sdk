@@ -57,9 +57,9 @@ const log = createLogger("immunity");
  *   const im = new Immunity({ wallet, network: "base-sepolia" });
  *   await im.start();   // connects signer, binds the live Base contracts
  *
- * S0/S1 foundation: `start()` connects to the live Base network and exposes the
- * typed contract bindings via `contracts`. The behavioural surface
- * (`check()` / `publish()`) is rebuilt in later packages — see the TODOs.
+ * `start()` connects to the live Base network and binds the typed contracts;
+ * the full behavioural surface — `check()`, `publish()`, `corroborate()`,
+ * `registerPublisher()`, `deposit()` — is implemented on this facade.
  */
 export class Immunity {
   readonly #config: ImmunityConfig;
