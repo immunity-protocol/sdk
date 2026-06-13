@@ -6,8 +6,9 @@ import type { Hex32 } from "../types/antibody.js";
  * uncommon counterparty hits Tier 2 repeatedly within the TTL window.
  *
  * The TTL is short by design (5 min): freshly published antibodies must
- * become visible quickly. AXL gossip evicts entries on incoming antibodies,
- * so a `pub` arriving from any peer immediately invalidates a prior absent.
+ * become visible quickly. Invalidation is otherwise eviction-driven — hydrating
+ * a Tier-2 result for a matcher `evict`s its absent entry so the next probe
+ * sees the live antibody. (Full event-driven invalidation from chain logs is S8.)
  */
 export class NegativeMatcherCache {
   private readonly absent = new Map<Hex32, number>();
