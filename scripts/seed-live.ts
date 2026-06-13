@@ -175,7 +175,7 @@ async function assertTargets(
 }
 
 async function startCtx(net: NetworkConfig, label: string, signer: Signer): Promise<PublisherCtx> {
-  const im = new Immunity({ wallet: signer, network: "base-sepolia" });
+  const im = new Immunity({ wallet: signer, network: net });
   await im.start();
   const address = (await signer.getAddress()).toLowerCase() as Address;
   return { label, address, signer, im };
@@ -298,7 +298,11 @@ async function runLive(
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const net = BASE_SEPOLIA;
+  // Allow a more reliable RPC than the public default (public nodes flake under
+  // the seed's tx/read load). BASE_SEPOLIA_RPC_URL overrides the preset.
+  const net: NetworkConfig = process.env.BASE_SEPOLIA_RPC_URL
+    ? { ...BASE_SEPOLIA, rpcUrl: process.env.BASE_SEPOLIA_RPC_URL }
+    : BASE_SEPOLIA;
   const provider = new JsonRpcProvider(net.rpcUrl, net.chainId);
   const start = Date.now();
 
