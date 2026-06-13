@@ -26,7 +26,7 @@
 //     GENESIS_2_PRIVATE_KEY=0x… npx tsx scripts/seed-live.ts --live  # genesis
 
 import { config as loadEnv } from "dotenv";
-import { JsonRpcProvider, Wallet, keccak256, toUtf8Bytes } from "ethers";
+import { JsonRpcProvider, NonceManager, type Signer, Wallet, keccak256, toUtf8Bytes } from "ethers";
 import {
   type Address,
   BASE_SEPOLIA,
@@ -107,15 +107,22 @@ function requireEnv(name: string): string {
   return v;
 }
 
-/** Deterministic throwaway publisher key derived from the deployer key (resumable, no stranded funds). */
-function deriveThrowaway(deployerPk: string, i: number): Wallet {
-  return new Wallet(keccak256(toUtf8Bytes(`${deployerPk}:immunity-seedtest:${i}`)));
+/**
+ * Deterministic throwaway publisher, NonceManager-wrapped. Derived from the
+ * deployer key so a resumed run reuses the same wallets (no stranded funds).
+ */
+function deriveThrowaway(deployerPk: string, i: number, provider: JsonRpcProvider): NonceManager {
+  const wallet = new Wallet(
+    keccak256(toUtf8Bytes(`${deployerPk}:immunity-seedtest:${i}`)),
+    provider,
+  );
+  return new NonceManager(wallet);
 }
 
 /** Per-publisher USDC sizing (same across publishers — bonds depend only on severity+target). */
 async function sizeFunding(
   net: NetworkConfig,
-  runner: Wallet,
+  runner: Signer,
   targets: CorpusTarget[],
 ): Promise<{ registrationBond: bigint; deposit: bigint; mint: bigint }> {
   const { registrar, registry } = buildOnchain(net, runner);
@@ -153,7 +160,7 @@ async function seedPublisher(
 /** Mature + assert every target across all publishers; collect reports. */
 async function assertTargets(
   net: NetworkConfig,
-  readsRunner: Wallet,
+  readsRunner: Signer,
   ctxs: PublisherCtx[],
   targets: CorpusTarget[],
   ledger: SeedLedger,
@@ -167,10 +174,11 @@ async function assertTargets(
   return reports;
 }
 
-async function startCtx(net: NetworkConfig, label: string, signer: Wallet): Promise<PublisherCtx> {
+async function startCtx(net: NetworkConfig, label: string, signer: Signer): Promise<PublisherCtx> {
   const im = new Immunity({ wallet: signer, network: "base-sepolia" });
   await im.start();
-  return { label, address: signer.address.toLowerCase() as Address, signer, im };
+  const address = (await signer.getAddress()).toLowerCase() as Address;
+  return { label, address, signer, im };
 }
 
 async function runValidate(
@@ -179,7 +187,7 @@ async function runValidate(
   args: Args,
 ): Promise<boolean> {
   const deployerPk = requireEnv("DEPLOYER_PRIVATE_KEY");
-  const deployer = new Wallet(deployerPk, provider);
+  const deployer = new NonceManager(new Wallet(deployerPk, provider));
   const ledger = new SeedLedger(args.ledger);
   const mode = "validate";
 
@@ -204,8 +212,8 @@ async function runValidate(
 
   const ctxs: PublisherCtx[] = [];
   for (let i = 0; i < 3; i++) {
-    const wallet = deriveThrowaway(deployerPk, i).connect(provider);
-    const addr = wallet.address;
+    const signer = deriveThrowaway(deployerPk, i, provider);
+    const addr = await signer.getAddress();
 
     const gas = await ensureGas(deployer, addr, GAS_TOPUP_ETH, GAS_MIN_ETH);
     console.log(
@@ -215,11 +223,12 @@ async function runValidate(
     const rep = await ensureReputation(net, deployer, addr, repTarget);
     if (rep.granted) console.log(`    granted reputation → ${rep.score} (tx=${rep.txHash})`);
 
-    const minted = await ensureUsdc(net, wallet, addr, mint, usdcMin);
+    // The throwaway self-mints with its own NonceManager (same signer the SDK uses).
+    const minted = await ensureUsdc(net, signer, addr, mint, usdcMin);
     if (minted.minted)
       console.log(`    minted USDC → ${formatUsdc(minted.balance)} (tx=${minted.txHash})`);
 
-    ctxs.push(await startCtx(net, `seedtest-${i}`, wallet));
+    ctxs.push(await startCtx(net, `seedtest-${i}`, signer));
   }
 
   for (const ctx of ctxs) await seedPublisher(ctx, net, mode, targets, ledger);
@@ -234,13 +243,15 @@ async function runLive(
   provider: JsonRpcProvider,
   args: Args,
 ): Promise<boolean> {
-  const deployer = new Wallet(requireEnv("DEPLOYER_PRIVATE_KEY"), provider);
-  const g1 = new Wallet(requireEnv("GENESIS_1_PRIVATE_KEY"), provider);
-  const g2 = new Wallet(requireEnv("GENESIS_2_PRIVATE_KEY"), provider);
-  const wallets: Array<{ label: string; wallet: Wallet }> = [
-    { label: "genesis-1", wallet: deployer },
-    { label: "genesis-2", wallet: g1 },
-    { label: "genesis-3", wallet: g2 },
+  // genesis-1 IS the deployer; it reuses the SAME NonceManager for both funding
+  // and publishing so the two roles share one local nonce sequence.
+  const deployer = new NonceManager(new Wallet(requireEnv("DEPLOYER_PRIVATE_KEY"), provider));
+  const g1 = new NonceManager(new Wallet(requireEnv("GENESIS_1_PRIVATE_KEY"), provider));
+  const g2 = new NonceManager(new Wallet(requireEnv("GENESIS_2_PRIVATE_KEY"), provider));
+  const wallets: Array<{ label: string; signer: Signer }> = [
+    { label: "genesis-1", signer: deployer },
+    { label: "genesis-2", signer: g1 },
+    { label: "genesis-3", signer: g2 },
   ];
   const ledger = new SeedLedger(args.ledger);
   const mode = "live";
@@ -260,12 +271,13 @@ async function runLive(
 
   const { reputation } = buildOnchain(net, deployer);
   const ctxs: PublisherCtx[] = [];
-  for (const { label, wallet } of wallets) {
-    const addr = wallet.address;
+  for (const { label, signer } of wallets) {
+    const addr = await signer.getAddress();
+    const isDeployer = signer === deployer;
     const score = await reputation.scoreOf(addr);
     console.log(`  ${label} ${addr} reputation=${score}`);
 
-    if (args.fundEth && wallet.address !== deployer.address) {
+    if (args.fundEth && !isDeployer) {
       const gas = await ensureGas(deployer, addr, GAS_TOPUP_ETH, GAS_MIN_ETH);
       if (gas.txHash) console.log(`    funded gas → ${fmtEth(gas.balance)} ETH (tx=${gas.txHash})`);
     }
@@ -274,7 +286,7 @@ async function runLive(
     if (minted.minted)
       console.log(`    minted USDC → ${formatUsdc(minted.balance)} (tx=${minted.txHash})`);
 
-    ctxs.push(await startCtx(net, label, wallet));
+    ctxs.push(await startCtx(net, label, signer));
   }
 
   for (const ctx of ctxs) await seedPublisher(ctx, net, mode, targets, ledger);
