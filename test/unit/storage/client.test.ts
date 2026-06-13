@@ -8,6 +8,9 @@ import type { Hex32 } from "../../../src/types/antibody.js";
 const WALLET = new Wallet("0x1111111111111111111111111111111111111111111111111111111111111111");
 const DIGEST: Hex32 = "0xa5aceef07eedc92df674a78966df6bcb607e5a29144be0a077361e80b8056971";
 const GATEWAY_CID = hex32ToCid(DIGEST);
+// A distinct digest/CID for the separately-pinned encrypted context object.
+const CONTEXT_DIGEST: Hex32 = "0x112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00";
+const CONTEXT_CID = hex32ToCid(CONTEXT_DIGEST);
 
 const ENVELOPE: PublicEnvelopeV1 = {
   schema: "immunity/antibody-envelope/v1",
@@ -45,7 +48,7 @@ describe("StorageClient.putEvidence (signed POST)", () => {
       // signature recovers to the publisher
       const recovered = verifyMessage(getBytes(body.payloadHash), body.signature);
       expect(recovered.toLowerCase()).toBe(WALLET.address.toLowerCase());
-      return new Response(JSON.stringify({ cid: GATEWAY_CID }), { status: 200 });
+      return new Response(JSON.stringify({ evidenceCid: GATEWAY_CID }), { status: 200 });
     });
 
     const client = makeClient(fetchMock as unknown as typeof fetch);
@@ -55,19 +58,28 @@ describe("StorageClient.putEvidence (signed POST)", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe("https://gw.test/evidence");
     expect((init as RequestInit).method).toBe("POST");
-    expect(out.cid).toBe(GATEWAY_CID);
+    expect(out.cids.evidenceCid).toBe(GATEWAY_CID);
     expect(out.evidenceCid).toBe(DIGEST);
+    // No context sent → no contextHash / contextCid.
+    expect(out.contextHash).toBeUndefined();
+    expect(out.cids.contextCid).toBeUndefined();
   });
 
-  it("carries the encrypted context blob in the payload when provided", async () => {
+  it("maps the context CID to contextHash when encrypted context is provided", async () => {
     let captured: unknown;
     const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       captured = JSON.parse(init?.body as string).payload;
-      return new Response(JSON.stringify({ cid: GATEWAY_CID }), { status: 200 });
+      return new Response(
+        JSON.stringify({ evidenceCid: GATEWAY_CID, contextCid: CONTEXT_CID }),
+        { status: 200 },
+      );
     });
     const client = makeClient(fetchMock as unknown as typeof fetch);
-    await client.putEvidence(ENVELOPE, "0xdeadbeef" as `0x${string}`);
+    const out = await client.putEvidence(ENVELOPE, "0xdeadbeef" as `0x${string}`);
     expect((captured as { encryptedContext?: string }).encryptedContext).toBe("0xdeadbeef");
+    expect(out.evidenceCid).toBe(DIGEST);
+    expect(out.contextHash).toBe(CONTEXT_DIGEST);
+    expect(out.cids.contextCid).toBe(CONTEXT_CID);
   });
 
   it("throws when the gateway returns a non-ok status", async () => {
