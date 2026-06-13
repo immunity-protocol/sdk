@@ -21,3 +21,4 @@ infra/axl-mesh/data/
 
 # live-seed idempotency ledger (local run state, not committed)
 scripts/.seed-ledger.json
+.dex-evil-ledger.json
