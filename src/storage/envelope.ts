@@ -1,8 +1,7 @@
 import type { Address, AntibodyType, Hex32 } from "../types/antibody.js";
-import type { StorageClient } from "./indexer.js";
 
 /**
- * Public envelope JSON uploaded to 0G Storage as `evidenceCid`. Consumers
+ * Public envelope JSON uploaded to storage as `evidenceCid`. Consumers
  * (explorer, indexer, peer agents) hydrate richer detail from this without
  * touching the chain.
  *
@@ -29,21 +28,16 @@ export type PublicMatcherSummary =
   | { kind: "graph"; chainId: number; taintSetId: Hex32; size: number }
   | { kind: "semantic"; flavor: string; markerHint?: string };
 
+// TODO(storage-lighthouse): the envelope SCHEMA is kept (consumed by the
+// explorer/read surface). The upload/fetch transport is rebuilt on Lighthouse
+// (@lighthouse-web3/sdk + the network's `lighthouseGateway`) in the storage
+// package — the old 0G StorageClient transport was removed in S0.
 export async function uploadPublicEnvelope(
-  storage: StorageClient,
-  envelope: PublicEnvelopeV1,
+  _envelope: PublicEnvelopeV1,
 ): Promise<{ evidenceCid: Hex32; txHash: string }> {
-  const { rootHash, txHash } = await storage.uploadJson(envelope);
-  return { evidenceCid: rootHash, txHash };
+  throw new Error("not implemented in v1 yet (storage-lighthouse package)");
 }
 
-export async function fetchPublicEnvelope(
-  storage: StorageClient,
-  cid: Hex32,
-): Promise<PublicEnvelopeV1> {
-  const raw = await storage.downloadJson<PublicEnvelopeV1>(cid);
-  if (raw?.schema !== "immunity/antibody-envelope/v1") {
-    throw new Error(`unexpected envelope schema: ${raw?.schema}`);
-  }
-  return raw;
+export async function fetchPublicEnvelope(_cid: Hex32): Promise<PublicEnvelopeV1> {
+  throw new Error("not implemented in v1 yet (storage-lighthouse package)");
 }

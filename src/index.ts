@@ -2,7 +2,19 @@
 
 export { Immunity } from "./immunity.js";
 
-export { TESTNET, resolveNetwork } from "./network.js";
+export { BASE_SEPOLIA, BASE_MAINNET, resolveNetwork } from "./network.js";
+
+export {
+  registryContract,
+  reputationContract,
+  registrarContract,
+  protectedSetContract,
+  challengeManagerContract,
+  creReceiverContract,
+  usdcContract,
+  coreContracts,
+} from "./contracts.js";
+export type { CoreContracts } from "./contracts.js";
 
 export type {
   Antibody,
@@ -20,7 +32,10 @@ export {
   SemanticFlavorValue,
   StatusValue,
   VerdictValue,
+  formatImmId,
 } from "./types/antibody.js";
+
+export type { EnforcementInputs } from "./types/enforcement.js";
 
 export type {
   CheckContext,
@@ -42,19 +57,20 @@ export type {
 export { extractFacts } from "./tx/extractFacts.js";
 export type { TxFacts } from "./tx/extractFacts.js";
 
-export type { TeeVerifyFn, TeeVerifyOutcome } from "./check-flow.js";
 export { buildVerdictPrompt, distillBundle } from "./tee/prompt.js";
 export { parseVerdict } from "./tee/parse.js";
 export type { RawVerdict } from "./tee/parse.js";
 
 export type {
   ConfidenceThresholds,
+  CoreAddresses,
   EscalateHandler,
   EscalationContext,
   EscalationDecision,
   ImmunityConfig,
   NetworkConfig,
   NetworkPreset,
+  UnverifiedAntibodyPolicy,
 } from "./types/config.js";
 
 export {
@@ -72,16 +88,8 @@ export {
   TeeResponseError,
 } from "./types/errors.js";
 
-export type { PublishInput, PublishResult } from "./settlement/publish.js";
-export type { PublisherStats } from "./settlement/balance.js";
-export type { SweepResult } from "./settlement/sweep.js";
-
-export { createStorageClient } from "./storage/indexer.js";
-export type { StorageClient, StorageClientOptions } from "./storage/indexer.js";
 export { uploadPublicEnvelope, fetchPublicEnvelope } from "./storage/envelope.js";
 export type { PublicEnvelopeV1, PublicMatcherSummary } from "./storage/envelope.js";
-export { uploadEncryptedContext } from "./storage/upload.js";
-export type { ContextUpload } from "./storage/upload.js";
 
 export { computeKeccakId } from "./keccak/id.js";
 export { hashAddressMatcher } from "./keccak/matchers/address.js";
