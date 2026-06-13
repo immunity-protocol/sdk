@@ -93,6 +93,7 @@ export type {
 } from "./types/config.js";
 
 export {
+  AlreadyRegisteredError,
   AntibodyNotFoundError,
   BlockError,
   DuplicateAntibodyError,
@@ -101,11 +102,14 @@ export {
   InsufficientBalanceError,
   MissingConfigError,
   NetworkError,
+  NotRegisteredError,
   NotStartedError,
   StakeLockedError,
   TeeAttestationError,
   TeeResponseError,
 } from "./types/errors.js";
+
+export type { PublishInput, PublishParams, PublishResult } from "./publish/params.js";
 
 export { uploadPublicEnvelope, fetchPublicEnvelope } from "./storage/envelope.js";
 export type { PublicEnvelopeV1, PublicMatcherSummary } from "./storage/envelope.js";
