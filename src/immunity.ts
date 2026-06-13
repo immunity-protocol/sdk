@@ -34,6 +34,11 @@ import { EnforcementResolver } from "./registry/enforcement.js";
 import type { RegistryReads } from "./registry/lookup.js";
 import { NegativeMatcherCache } from "./registry/negative-cache.js";
 import { StorageClient } from "./storage/client.js";
+import {
+  CreNovelVerifier,
+  type Erc20Like as VerifierErc20Like,
+  type NovelVerificationLike,
+} from "./tee/cre-verifier.js";
 import { type RawVerdict, asVerdictEnum } from "./tee/parse.js";
 import { seedFromTx } from "./tee/seed-from-tx.js";
 import type { Address } from "./types/antibody.js";
@@ -134,7 +139,10 @@ export class Immunity {
     }
 
     this.#reads = reads;
-    this.#verifier = this.#config.verifier;
+    // An explicitly-injected verifier wins (tests / custom backends); otherwise
+    // build the CRE on-chain-trigger verifier from the signer-bound contracts.
+    // No signer ⇒ no contracts ⇒ no verifier ⇒ S5 fails closed on verify.
+    this.#verifier = this.#config.verifier ?? this.#buildCreVerifier();
     this.#resolver = new EnforcementResolver({
       reads,
       matchers,
@@ -143,6 +151,37 @@ export class Immunity {
       codeFetcher,
       chainId,
       denyKeccakIds: this.#config.denyKeccakIds,
+    });
+  }
+
+  /**
+   * Construct the Tier-3 CRE verifier (Path B) from the signer-bound contracts.
+   * Triggers CRE by an on-chain `requestVerification` tx (the agent's wallet
+   * pays the fee) and awaits the DON-signed verdict. Returns undefined if the
+   * signer/contracts/storage are not ready, so S5 fails closed on verify.
+   */
+  #buildCreVerifier(): NovelVerifier | undefined {
+    if (!this.#contracts || !this.#wallet || !this.#storage) return undefined;
+    const storage = this.#storage;
+    const requester = this.#wallet;
+    return new CreNovelVerifier({
+      requester,
+      contract: this.#contracts.novelVerification as unknown as NovelVerificationLike,
+      contractAddress: this.#network.addresses.novelVerification,
+      usdc: this.#contracts.usdc as unknown as VerifierErc20Like,
+      oraclePublicKey: this.#network.creOraclePublicKey,
+      upload: async ({ envelope, encryptedContext }) => {
+        // The gateway pins the public envelope + encrypted context as separate
+        // IPFS objects and returns both digests. Reuse the publish-evidence path.
+        const res = await storage.putEvidence(
+          envelope as unknown as Parameters<typeof storage.putEvidence>[0],
+          encryptedContext,
+        );
+        if (!res.contextHash) {
+          throw new Error("storage gateway did not pin the encrypted context");
+        }
+        return { evidenceCid: res.evidenceCid, contextHash: res.contextHash };
+      },
     });
   }
 
