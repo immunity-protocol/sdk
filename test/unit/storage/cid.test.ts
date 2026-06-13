@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type { Hex32 } from "../../../src/types/antibody.js";
 import { cidToHex32, hex32ToCid } from "../../../src/storage/cid.js";
+import type { Hex32 } from "../../../src/types/antibody.js";
 
-// sha2-256 digest of a known evidence-envelope fixture.
+// A REAL CIDv0/dag-pb/sha2-256 fixture from the gateway Step-0 verdict
+// (gateway-cid-verdict.md): a 40-byte JSON pinned via Lighthouse.
+const REAL_CID = "QmXE7xhPkmfF4tdXmwSh6ZUWydKn6fmaE9FVasfzWUxou2";
+// sha2-256 multihash digest of a known evidence-envelope fixture.
 const DIGEST: Hex32 = "0xa5aceef07eedc92df674a78966df6bcb607e5a29144be0a077361e80b8056971";
 
-describe("CID ⇄ Hex32 mapping", () => {
+describe("CID ⇄ Hex32 mapping (CIDv0/dag-pb)", () => {
+  it("decodes a real Qm… fixture to a 32-byte digest and back", () => {
+    const digest = cidToHex32(REAL_CID);
+    expect(digest).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(hex32ToCid(digest)).toBe(REAL_CID);
+  });
+
   it("round-trips hex32 -> cid -> hex32", () => {
     const cid = hex32ToCid(DIGEST);
     expect(cidToHex32(cid)).toBe(DIGEST);
@@ -16,22 +25,29 @@ describe("CID ⇄ Hex32 mapping", () => {
     expect(hex32ToCid(cidToHex32(cid))).toBe(cid);
   });
 
-  it("emits a CIDv1/raw/sha2-256 CID (bafkrei… prefix)", () => {
-    // The version+codec+hashfn+length header bytes [0x01,0x55,0x12,0x20] base32
-    // to a fixed prefix regardless of digest.
-    expect(hex32ToCid(DIGEST).startsWith("bafkrei")).toBe(true);
+  it("emits a CIDv0 CID (Qm… prefix, 46 chars)", () => {
+    const cid = hex32ToCid(DIGEST);
+    expect(cid.startsWith("Qm")).toBe(true);
+    expect(cid).toHaveLength(46);
   });
 
-  it("rejects a CIDv0 (Qm…) CID", () => {
-    expect(() => cidToHex32("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")).toThrow(
-      /unsupported CID encoding/,
-    );
+  it("rejects a CIDv1 (bafkrei…/raw) CID", () => {
+    expect(() =>
+      cidToHex32("bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52gy"),
+    ).toThrow(/unsupported CID/);
   });
 
-  it("rejects a non-raw (dag-pb) CIDv1", () => {
+  it("rejects a CIDv1 (bafybei…/dag-pb) CID", () => {
     expect(() =>
       cidToHex32("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"),
-    ).toThrow(/unsupported CID codec/);
+    ).toThrow(/unsupported CID/);
+  });
+
+  it("rejects a malformed base58 CID (invalid character)", () => {
+    // '0' (zero) is not in the base58btc alphabet.
+    expect(() => cidToHex32("Qm0invalidbase58chars000000000000000000000000")).toThrow(
+      /invalid base58btc character/,
+    );
   });
 
   it("rejects a non-32-byte hex digest", () => {
