@@ -22,21 +22,29 @@ function tx() {
   return { hash: HASH, wait: vi.fn(async () => ({})) };
 }
 
-function makeDeps(over: {
-  allowance?: bigint;
-  registered?: boolean;
-  registrationBond?: bigint;
-  bondAmount?: bigint;
-  challengeBondBps?: number;
-  minChallengeBond?: bigint;
-  balance?: bigint;
-} = {}): WriteDeps {
+function makeDeps(
+  over: {
+    allowance?: bigint;
+    registered?: boolean;
+    registrationBond?: bigint;
+    bondAmount?: bigint;
+    challengeBondBps?: number;
+    minChallengeBond?: bigint;
+    balance?: bigint;
+  } = {},
+): WriteDeps {
+  // Stateful allowance: a successful approve raises it, mirroring the chain so
+  // `ensureAllowance`'s post-approve confirmation poll terminates.
+  let allowance = over.allowance ?? 0n;
   return {
     publisher: PUBLISHER,
     network: TEST_NETWORK,
     usdc: {
-      allowance: vi.fn(async () => over.allowance ?? 0n),
-      approve: vi.fn(async () => tx()),
+      allowance: vi.fn(async () => allowance),
+      approve: vi.fn(async (_spender: string, amount: bigint) => {
+        allowance = amount;
+        return tx();
+      }),
     },
     registrar: {
       registrationBond: vi.fn(async () => over.registrationBond ?? 10_000_000n),
@@ -124,16 +132,27 @@ describe("deposit / withdraw / balanceOf", () => {
 
 describe("challenge", () => {
   it("uses the floor when the scaled bond is below minChallengeBond", async () => {
-    const deps = makeDeps({ bondAmount: 2_000_000n, challengeBondBps: 10_000, minChallengeBond: 5_000_000n });
+    const deps = makeDeps({
+      bondAmount: 2_000_000n,
+      challengeBondBps: 10_000,
+      minChallengeBond: 5_000_000n,
+    });
     const out = await challenge(deps, ANTIBODY_ID);
     // scaled = 2_000_000 × 10000/10000 = 2_000_000 < 5_000_000 floor
     expect(out.bond).toBe(5_000_000n);
-    expect(deps.usdc.approve).toHaveBeenCalledWith(TEST_NETWORK.addresses.challengeManager, 5_000_000n);
+    expect(deps.usdc.approve).toHaveBeenCalledWith(
+      TEST_NETWORK.addresses.challengeManager,
+      5_000_000n,
+    );
     expect(deps.challengeManager.challenge).toHaveBeenCalledWith(ANTIBODY_ID);
   });
 
   it("scales off the antibody bond when above the floor", async () => {
-    const deps = makeDeps({ bondAmount: 8_000_000n, challengeBondBps: 10_000, minChallengeBond: 5_000_000n });
+    const deps = makeDeps({
+      bondAmount: 8_000_000n,
+      challengeBondBps: 10_000,
+      minChallengeBond: 5_000_000n,
+    });
     const out = await challenge(deps, ANTIBODY_ID);
     expect(out.bond).toBe(8_000_000n);
   });

@@ -79,9 +79,39 @@ export interface WriteDeps {
   usdc: Erc20Like;
 }
 
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Wait until `spender`'s allowance is observably `>= amount`.
+ *
+ * `.wait()` returns once the approve is mined on the node that served it, but
+ * public RPCs are load-balanced and a lagging node can still read the allowance
+ * as stale (0) — reverting the dependent tx's gas estimation with
+ * `ERC20InsufficientAllowance`. Polling the allowance back closes that window so
+ * the next call (and its estimateGas) only fires once the approve is visible.
+ */
+async function confirmAllowance(
+  usdc: Erc20Like,
+  owner: Address,
+  spender: Address,
+  amount: bigint,
+  attempts = 20,
+  delayMs = 500,
+): Promise<void> {
+  for (let i = 0; i < attempts; i++) {
+    if ((await usdc.allowance(owner, spender)) >= amount) return;
+    await delay(delayMs);
+  }
+  throw new Error(`approval to ${spender} not visible after confirmation (allowance < ${amount})`);
+}
+
 /**
  * Approve `spender` for at least `amount` of USDC — but only when the existing
  * allowance is short (saves a redundant approval tx). No-op for a zero amount.
+ *
+ * Awaits the approve to confirmation AND confirms the new allowance is readable
+ * before returning, so a dependent "approve → call" sequence never races its own
+ * approval (see `confirmAllowance`).
  */
 export async function ensureAllowance(
   usdc: Erc20Like,
@@ -93,6 +123,7 @@ export async function ensureAllowance(
   const current = await usdc.allowance(owner, spender);
   if (current >= amount) return;
   await (await usdc.approve(spender, amount)).wait();
+  await confirmAllowance(usdc, owner, spender, amount);
 }
 
 /**
