@@ -3,6 +3,7 @@ import { hashGraphMatcher } from "../keccak/matchers/graph.js";
 import type { Address, Antibody, Hex32 } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
+import { logSeedHashMismatch } from "./seed-hash-log.js";
 
 /**
  * GraphMatcher: O(probe candidates) membership check across all GRAPH-type
@@ -72,7 +73,10 @@ export class GraphMatcher implements Matcher {
       chainId: ab.seed.chainId,
       taintedAddresses: ab.seed.taintedAddresses,
     });
-    if (expected !== ab.primaryMatcherHash) return;
+    if (expected !== ab.primaryMatcherHash) {
+      logSeedHashMismatch(this.name, ab, expected);
+      return;
+    }
 
     this.antibodies.set(ab.keccakId, ab);
     for (const a of ab.seed.taintedAddresses) {

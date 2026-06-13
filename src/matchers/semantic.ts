@@ -4,6 +4,7 @@ import type { Antibody, Hex32 } from "../types/antibody.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
 import { flattenContext } from "./semantic-flatten.js";
 import { normalizeSemanticText } from "./semantic-normalize.js";
+import { logSeedHashMismatch } from "./seed-hash-log.js";
 
 /**
  * SemanticMatcher: v1 marker-substring scan.
@@ -67,7 +68,10 @@ export class SemanticMatcher implements Matcher {
       flavor: ab.seed.flavor,
       pattern: ab.seed.pattern,
     });
-    if (expected !== ab.primaryMatcherHash) return;
+    if (expected !== ab.primaryMatcherHash) {
+      logSeedHashMismatch(this.name, ab, expected);
+      return;
+    }
     if (ab.seed.pattern.kind !== "marker") return;
     const marker = normalizeSemanticText(ab.seed.pattern.value);
     let byId = this.markers.get(marker);

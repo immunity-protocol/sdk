@@ -4,6 +4,7 @@ import { extractCounterparties } from "../tx/extractCounterparties.js";
 import type { Address, Antibody } from "../types/antibody.js";
 import { chainAddressKey } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
+import { logSeedHashMismatch } from "./seed-hash-log.js";
 
 /**
  * AddressMatcher: O(1) lookup by `(chainId, address)` against ADDRESS-type
@@ -84,7 +85,10 @@ export class AddressMatcher implements Matcher {
   private indexKey(ab: Antibody): string | null {
     if (ab.abType !== "ADDRESS" || !ab.seed || ab.seed.abType !== "ADDRESS") return null;
     const expected = hashAddressMatcher({ chainId: ab.seed.chainId, target: ab.seed.target });
-    if (expected !== ab.primaryMatcherHash) return null;
+    if (expected !== ab.primaryMatcherHash) {
+      logSeedHashMismatch(this.name, ab, expected);
+      return null;
+    }
     return chainAddressKey(ab.seed.chainId, ab.seed.target);
   }
 }

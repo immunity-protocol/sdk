@@ -4,6 +4,7 @@ import { hashCallPatternMatcher } from "../keccak/matchers/call-pattern.js";
 import type { Antibody } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
+import { logSeedHashMismatch } from "./seed-hash-log.js";
 
 /**
  * CallPatternMatcher: looks up against `(chainId, target, selector, argsTemplateHash)`.
@@ -92,7 +93,10 @@ export class CallPatternMatcher implements Matcher {
       selector: ab.seed.selector,
       argsTemplate: ab.seed.argsTemplate,
     });
-    if (expected !== ab.primaryMatcherHash) return null;
+    if (expected !== ab.primaryMatcherHash) {
+      logSeedHashMismatch(this.name, ab, expected);
+      return null;
+    }
     return this.indexKey(
       ab.seed.chainId,
       normalizeAddress(ab.seed.target),

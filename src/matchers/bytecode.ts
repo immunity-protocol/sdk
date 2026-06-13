@@ -4,6 +4,7 @@ import { hashBytecodeMatcher } from "../keccak/matchers/bytecode.js";
 import type { Address, Antibody, Hex32 } from "../types/antibody.js";
 import { normalizeAddress } from "../util/address.js";
 import type { MatchHit, MatchProbe, Matcher } from "./matcher.js";
+import { logSeedHashMismatch } from "./seed-hash-log.js";
 
 /**
  * Resolves the runtime bytecode at a given (chainId, address). The matcher
@@ -71,7 +72,10 @@ export class BytecodeMatcher implements Matcher {
   private tryIndex(ab: Antibody): void {
     if (ab.abType !== "BYTECODE" || !ab.seed || ab.seed.abType !== "BYTECODE") return;
     const expected = hashBytecodeMatcher({ bytecodeHash: ab.seed.bytecodeHash });
-    if (expected !== ab.primaryMatcherHash) return;
+    if (expected !== ab.primaryMatcherHash) {
+      logSeedHashMismatch(this.name, ab, expected);
+      return;
+    }
     this.index.set(ab.seed.bytecodeHash, ab);
   }
 
