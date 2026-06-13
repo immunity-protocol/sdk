@@ -11,6 +11,14 @@ const PLACEHOLDER_CRE_ORACLE_PUBKEY =
   "0x020000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 /**
+ * Live Base Sepolia CRE oracle public key (compressed secp256k1). The SDK
+ * ECIES-encrypts evidence context to this; only the CRE TEE holds the matching
+ * private key (Chainlink Vault DON). Source: the immunity-cre-workflow oracle keypair.
+ */
+const BASE_SEPOLIA_CRE_ORACLE_PUBKEY =
+  "0x0286bb5ddb6912da9d9c7c0d3df9664ac3d6440c1ab0929ae02423d1ce60fe35e5" as Hex;
+
+/**
  * Deployed protocol storage-gateway base URL (signed-POST WRITE target). The
  * SDK POSTs evidence to `{storageGatewayUrl}/evidence`. Shared infra (chain-
  * agnostic — it just pins to IPFS), so both presets reference it.
@@ -30,7 +38,7 @@ export const BASE_SEPOLIA: NetworkConfig = {
   blockExplorerUrl: "https://sepolia.basescan.org",
   lighthouseGateway: "https://gateway.lighthouse.storage/ipfs/",
   storageGatewayUrl: STORAGE_GATEWAY_URL,
-  creOraclePublicKey: PLACEHOLDER_CRE_ORACLE_PUBKEY,
+  creOraclePublicKey: BASE_SEPOLIA_CRE_ORACLE_PUBKEY,
   addresses: {
     registry: "0xdB155c21D26b917294BF0e2A1E46C9A14361BF44",
     reputation: "0x0e03F6Ca9e97447E2d97aFbFCe4cBF49202e9F25",
