@@ -5,35 +5,36 @@ import type { NovelThreatPolicy } from "./check.js";
 /**
  * Built-in network presets. `custom` is for self-hosted or future networks.
  */
-export type NetworkPreset = "testnet" | "custom";
+export type NetworkPreset = "base-sepolia" | "base-mainnet" | "custom";
+
+/** The deployed Immunity core contract addresses for a network. */
+export interface CoreAddresses {
+  registry: Address;
+  reputation: Address;
+  registrar: Address;
+  protectedSet: Address;
+  challengeManager: Address;
+  creReceiver: Address;
+  usdc: Address;
+  l2registry: Address;
+}
 
 /**
- * Canonical per-network configuration. Every consumer of network state
- * (Registry/USDC addresses, RPC, storage indexer, compute provider, AXL hubs)
- * reads from this object — no hardcoded constants elsewhere in the SDK.
- *
- * All fields required so a redeploy is a single-file change. Extend this
+ * Canonical per-network configuration. Every consumer of network state reads
+ * from this object — no hardcoded constants elsewhere in the SDK. Extend this
  * type rather than scattering new constants.
  */
 export interface NetworkConfig {
-  /** Human-readable identifier, e.g. "galileo-testnet". */
+  /** Human-readable identifier, e.g. "base-sepolia". */
   name: string;
   chainId: number;
   rpcUrl: string;
-  registryAddress: Address;
-  usdcAddress: Address;
   /** Block explorer base URL (no trailing slash). */
   blockExplorerUrl: string;
-  /** 0G Storage indexer used for envelope upload/download. */
-  storageIndexerUrl: string;
-  /** 0G Compute provider address that hosts the TEE inference model. */
-  computeProvider: Address;
-  /** TEE model identifier, e.g. "qwen-2.5-7b-instruct". */
-  computeModel: string;
-  /** AXL pubsub hub URIs the SDK can connect to (the gossip mesh). */
-  axlHubs: string[];
-  /** Mainnet RPC used for ENS reverse resolution of publisher addresses. */
-  ensRpcUrl: string;
+  /** Lighthouse IPFS gateway base (with trailing slash), e.g. ".../ipfs/". */
+  lighthouseGateway: string;
+  /** Deployed Immunity core contract addresses. */
+  addresses: CoreAddresses;
 }
 
 export interface ConfidenceThresholds {
@@ -58,85 +59,48 @@ export interface EscalationContext {
 export type EscalateHandler = (ctx: EscalationContext) => Promise<EscalationDecision>;
 
 /**
+ * How a consumer treats an antibody that is NOT yet hard-block-eligible
+ * (i.e. `corroboration < K` and not genesis-seeded) — the read-side policy
+ * knob. Behavior is wired in a later package.
+ *   - ignore:      treat advisory antibodies as no-ops (don't even pay a fee)
+ *   - escalate:    surface to `onEscalate` for an operator decision
+ *   - block:       act on advisory antibodies as if hard-block
+ *   - corroborate: publish a corroborating antibody to strengthen the signal
+ */
+export type UnverifiedAntibodyPolicy = "ignore" | "escalate" | "block" | "corroborate";
+
+/**
  * Top-level Immunity SDK configuration.
- *
- * `axlUrl` is required: the SDK refuses to start without an external AXL
- * endpoint. There is no in-process pubsub fallback by design.
  */
 export interface ImmunityConfig {
   wallet: Signer;
   network?: NetworkPreset | NetworkConfig;
-  axlUrl: string;
-  axlIdentityPath?: string;
   onEscalate?: EscalateHandler;
   escalationTimeout?: number;
   onTimeout?: "deny" | "allow";
   confidenceThresholds?: Partial<ConfidenceThresholds>;
+  /** Policy for genuinely novel threats (no cache/registry match). */
   novelThreatPolicy?: NovelThreatPolicy;
-  /**
-   * Pluggable novel-threat verifier. When provided, this function replaces
-   * the default 0G Compute TEE broker used on `start()`. Same callable
-   * shape, same outcome (`TeeVerifyOutcome`); the SDK calls it from
-   * `check-flow.ts` whenever `novelThreatPolicy === "verify"` and the
-   * cache + registry layers don't match. Useful when:
-   *   - An agent's wallet can't fund the 0G Compute ledger's 3 OG floor
-   *     and a hosted LLM (Claude, OpenAI) is available instead.
-   *   - Tests want a deterministic stub.
-   *   - Production wants to gate inference on a private model gateway.
-   * The integrity guarantees of the 0G TEE (signed inference, attestation)
-   * are NOT replicated by alternative backends. Use with that in mind.
-   */
-  teeVerifier?: import("../check-flow.js").TeeVerifyFn;
+  /** Read-side policy for not-yet-hard-block-eligible (advisory) antibodies. */
+  unverifiedAntibodyPolicy?: UnverifiedAntibodyPolicy;
   /**
    * Antibody keccak ids the operator wants the local agent to mute, even
-   * when the on-chain Registry still flags them ACTIVE. Used to retire a
-   * bad auto-mint when the chain-side `slash` isn't reachable (deployed
-   * Registry's slash is owner-only). Affects both Tier-1 cache hits and
-   * Tier-2 chain-lookup hits — neither path returns a block decision for
-   * a denylisted keccak. Local-only: each agent applies the filter
-   * independently.
+   * when the on-chain Registry still flags them. Local-only filter applied
+   * to both Tier-1 cache hits and Tier-2 chain-lookup hits.
    */
   denyKeccakIds?: ReadonlyArray<`0x${string}`>;
   /**
-   * Allow the TEE verifier to mint SEMANTIC antibodies from verdicts
-   * (using the LLM-extracted marker, validated for length, multi-word
-   * shape, denylist membership, and verbatim presence in the bundle).
-   * Off by default. When false, SEMANTIC verdicts fall back to ADDRESS
-   * seeds (the v0.4 behavior). See `seed-from-tx.ts` for guardrails.
-   */
-  semanticAutoMint?: boolean;
-  /**
-   * On `start()`, hydrate the local cache from the on-chain Registry by
-   * iterating `getAntibodyByImmSeq(1..nextImmSeq)`. Default `true` so
-   * late-joining peers see the catalog before their first check. Set to
-   * `false` for one-shot scripts (publish-threats, fund-og) that do not
-   * need to match on the catalog.
+   * On `start()`, hydrate the local cache from the on-chain Registry.
+   * Default `true`. Set `false` for one-shot scripts.
    */
   bootstrapCacheOnStart?: boolean;
-  /**
-   * Tuning for the bootstrap step (only relevant when
-   * `bootstrapCacheOnStart` is true).
-   */
+  /** Tuning for the bootstrap step (only when `bootstrapCacheOnStart`). */
   bootstrap?: {
     /** Concurrent fetches; default 4. */
     concurrency?: number;
     /** Soft cap on antibodies fetched. Default: no cap. */
     limit?: number;
-    /**
-     * Per-call retry budget for transient RPC errors (0.6.1+). Default 3.
-     */
+    /** Per-call retry budget for transient RPC errors. Default 3. */
     fetchRetries?: number;
   };
-  /**
-   * Minimum 0G to keep in the TEE Compute ledger when the verifier inits.
-   * Default 3. Lower values let agents with small wallets (e.g. demo fleet
-   * agents holding ~0.3 OG) reach a working TEE without per-agent funding
-   * topups.
-   */
-  minLedgerOg?: number;
-  /**
-   * Minimum 0G to deposit into the TEE provider sub-account when the
-   * verifier inits. Default 1. Same rationale as `minLedgerOg`.
-   */
-  minProviderOg?: number;
 }

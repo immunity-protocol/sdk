@@ -2,8 +2,8 @@
  * Antibody types and enums mirroring the on-chain Registry.
  *
  * The numeric values below MUST match the contract enums byte-for-byte so
- * struct round-trips are stable. See `contracts/interfaces/IRegistry.sol`
- * in the immunity-contracts-0g repo.
+ * struct round-trips are stable. See `contracts/interfaces/IImmunityRegistry.sol`
+ * in the immunity-contracts repo (Base).
  */
 
 export type Hex32 = `0x${string}`;
@@ -29,10 +29,11 @@ export type Verdict = keyof typeof VerdictValue;
 export type VerdictCode = (typeof VerdictValue)[Verdict];
 
 export const StatusValue = {
-  ACTIVE: 0,
-  CHALLENGED: 1,
-  SLASHED: 2,
-  EXPIRED: 3,
+  PROBATION: 0,
+  ACTIVE: 1,
+  CHALLENGED: 2,
+  SLASHED: 3,
+  EXPIRED: 4,
 } as const;
 
 export type Status = keyof typeof StatusValue;
@@ -108,11 +109,17 @@ export interface Antibody {
   attestation: Hex32;
   publisher: Address;
   reviewer: Address;
-  stakeAmount: bigint;
-  stakeLockUntil: bigint;
+  /** Non-refundable bond locked while the antibody is enforced (USDC, 6dp). */
+  bondAmount: bigint;
+  /** Publisher fees held in escrow until maturation (USDC, 6dp). */
+  escrowedFees: bigint;
+  /** Unix seconds the antibody matured (became ACTIVE); 0 if not matured. */
+  maturedAt: bigint;
   expiresAt: bigint;
   createdAt: bigint;
   isSeeded: boolean;
+  /** Cached prominence tier set at publish (0 normal, 1 protected target). */
+  prominenceTier: number;
   seed?: AntibodySeed;
 }
 
