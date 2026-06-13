@@ -188,7 +188,7 @@ export class StorageClient {
     return (await res.json()) as PublicEnvelopeV1;
   }
 
-  /** Keyless GET by on-chain `evidenceCid` (32-byte digest → CIDv1 → fetch). */
+  /** Keyless GET by on-chain `evidenceCid` (32-byte digest → CIDv0 `Qm…` → fetch). */
   async fetchPublicEnvelope(evidenceCid: Hex32): Promise<PublicEnvelopeV1> {
     return this.getEvidence(hex32ToCid(evidenceCid));
   }
