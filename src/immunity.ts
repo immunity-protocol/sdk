@@ -11,6 +11,14 @@ import { GraphMatcher } from "./matchers/graph.js";
 import { MatcherRegistry } from "./matchers/matcher.js";
 import { SemanticMatcher } from "./matchers/semantic.js";
 import { resolveNetwork } from "./network.js";
+import {
+  type Erc20Like,
+  type RegistrarLike,
+  type WriteDeps,
+  deregister,
+  isRegistered,
+  registerPublisher,
+} from "./publish/operations.js";
 import { EnforcementResolver } from "./registry/enforcement.js";
 import type { RegistryReads } from "./registry/lookup.js";
 import { NegativeMatcherCache } from "./registry/negative-cache.js";
@@ -158,6 +166,32 @@ export class Immunity {
       verifier: this.#verifier,
     };
     return runCheck(deps, tx, context, options);
+  }
+
+  /** Assemble the injected write-surface deps from the bound contracts + wallet. */
+  #writeDeps(): WriteDeps {
+    if (!this.#started || !this.#contracts || !this.#wallet) throw new NotStartedError();
+    return {
+      publisher: this.#wallet,
+      network: this.#network,
+      registrar: this.#contracts.registrar as unknown as RegistrarLike,
+      usdc: this.#contracts.usdc as unknown as Erc20Like,
+    };
+  }
+
+  /** Register the publisher's ENS identity, locking the registration bond. */
+  async registerPublisher(label: string): Promise<{ txHash: string; bond: bigint }> {
+    return registerPublisher(this.#writeDeps(), label);
+  }
+
+  /** Release the registration and refund the bond. */
+  async deregister(): Promise<{ txHash: string }> {
+    return deregister(this.#writeDeps());
+  }
+
+  /** Whether the connected wallet is a registered publisher. */
+  async isRegistered(): Promise<boolean> {
+    return isRegistered(this.#writeDeps());
   }
 
   // TODO(write-package): rebuilt with Lighthouse evidence + bonded publish.

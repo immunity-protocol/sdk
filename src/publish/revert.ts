@@ -1,5 +1,6 @@
 import type { Hex32 } from "../types/antibody.js";
 import {
+  AlreadyRegisteredError,
   DuplicateAntibodyError,
   InsufficientBalanceError,
   NotRegisteredError,
@@ -20,6 +21,8 @@ export function mapRevert(
       throw new DuplicateAntibodyError(ctx.keccakId ?? "unknown");
     case "NotRegistered":
       throw new NotRegisteredError();
+    case "AlreadyRegistered":
+      throw new AlreadyRegisteredError();
     case "InsufficientBalance":
       throw new InsufficientBalanceError(ctx.required ?? 0n, ctx.available ?? 0n);
     default:
