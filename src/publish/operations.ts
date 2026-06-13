@@ -43,6 +43,8 @@ export interface RegistryLike {
   balances(account: string): Promise<bigint>;
   publish(params: PublishParams): Promise<ContractTx>;
   mature(antibodyId: string): Promise<ContractTx>;
+  /** Quote the publish bond for a (severity, target) — used to gate auto-publish. */
+  computeBond(severity: number, target: string): Promise<bigint>;
   /** Reads back the stored antibody — for the assigned `immSeq` + the bond (challenge sizing). */
   getAntibody(keccakId: string): Promise<{ immSeq: bigint | number; bondAmount: bigint | number }>;
 }

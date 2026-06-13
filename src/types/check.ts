@@ -1,5 +1,6 @@
-import type { Antibody, Hex32 } from "./antibody.js";
+import type { PublishResult } from "../publish/params.js";
 import type { TxFacts } from "../tx/extractFacts.js";
+import type { Antibody, Hex32 } from "./antibody.js";
 
 /**
  * Decision classes returned by `check()`.
@@ -41,6 +42,15 @@ export interface CheckResult {
    * All-zero when the tx is null or its calldata isn't recognized.
    */
   txFacts: TxFacts;
+  /**
+   * Present ONLY when the auto-publish seam fired (config
+   * `autoPublishConfirmedThreats` on + registered + confirming verdict): the
+   * detached on-chain publish/corroborate. Resolves to the `PublishResult`, or
+   * `null` if it was skipped (not registered / balance short) or failed (the
+   * failure is logged and never affects the decision). A one-shot agent can
+   * `await result.pendingWrite` before exiting; long-lived agents ignore it.
+   */
+  pendingWrite?: Promise<PublishResult | null>;
 }
 
 export interface CheckOptions {

@@ -1,3 +1,4 @@
+import type { PublishResult } from "../publish/params.js";
 import type { EnforcementResolution } from "../registry/enforcement.js";
 import { type RawVerdict, decideFromVerdict } from "../tee/parse.js";
 import type { Antibody } from "../types/antibody.js";
@@ -14,6 +15,8 @@ export interface TerminalDecision {
   confidence: number;
   reason: string;
   novel: boolean;
+  /** Set by the orchestrator when the auto-publish seam fired; copied to CheckResult. */
+  pendingWrite?: Promise<PublishResult | null>;
 }
 
 /**

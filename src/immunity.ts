@@ -34,6 +34,8 @@ import { EnforcementResolver } from "./registry/enforcement.js";
 import type { RegistryReads } from "./registry/lookup.js";
 import { NegativeMatcherCache } from "./registry/negative-cache.js";
 import { StorageClient } from "./storage/client.js";
+import { type RawVerdict, asVerdictEnum } from "./tee/parse.js";
+import { seedFromTx } from "./tee/seed-from-tx.js";
 import type { Address } from "./types/antibody.js";
 import type { CheckOptions, CheckResult } from "./types/check.js";
 import type { ImmunityConfig, NetworkConfig } from "./types/config.js";
@@ -181,8 +183,43 @@ export class Immunity {
       corroborationK: () => reads.corroborationK().then(Number),
       config: resolveCheckConfig(this.#config),
       verifier: this.#verifier,
+      publishConfirmedThreat: (args) => this.#autoPublish(args),
     };
     return runCheck(deps, tx, context, options);
+  }
+
+  /**
+   * The auto-publish seam target: write an antibody for a Tier-3-confirmed
+   * threat. Only reached when `autoPublishConfirmedThreats` is on (the
+   * orchestrator gates the flag). Skips (→ null) when not registered or the
+   * balance can't cover the bond — so `check()` never sends a doomed publish.
+   */
+  async #autoPublish(args: {
+    verdict: RawVerdict;
+    tx: ProposedTx | null;
+    context: CheckContext;
+    mode: "verify" | "corroborate";
+  }): Promise<PublishResult | null> {
+    const deps = this.#writeDeps();
+    if (!(await isRegistered(deps))) return null;
+    const seed = seedFromTx(args.verdict, args.tx, args.context, this.#network.chainId);
+    if (!seed) return null;
+
+    const target =
+      seed.abType === "ADDRESS"
+        ? seed.target
+        : ("0x0000000000000000000000000000000000000000" as Address);
+    const bond = await deps.registry.computeBond(args.verdict.severity, target);
+    if ((await deps.registry.balances(deps.publisher)) < bond) return null;
+
+    const input: PublishInput = {
+      seed,
+      verdict: asVerdictEnum(args.verdict) ?? "MALICIOUS",
+      confidence: args.verdict.confidence,
+      severity: args.verdict.severity,
+      reasonSummary: args.verdict.reasoning,
+    };
+    return args.mode === "corroborate" ? runCorroborate(deps, input) : runPublish(deps, input);
   }
 
   /** Assemble the injected write-surface deps from the bound contracts + wallet. */

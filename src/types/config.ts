@@ -98,6 +98,15 @@ export interface ImmunityConfig {
   /** Read-side policy for not-yet-hard-block-eligible (advisory) antibodies. */
   unverifiedAntibodyPolicy?: UnverifiedAntibodyPolicy;
   /**
+   * Opt-in: when a Tier-3 verify/corroborate confirms a threat during `check()`,
+   * automatically publish/corroborate an antibody on-chain. Default `false`. The
+   * protective decision and re-verify ALWAYS happen regardless; this gates ONLY
+   * the bond-spending write. `check()` never spends the operator's bond unless
+   * this is on (and the wallet is registered and the balance covers the bond).
+   * The detached publish is surfaced as `CheckResult.pendingWrite`.
+   */
+  autoPublishConfirmedThreats?: boolean;
+  /**
    * Tier-3 novel-input verifier (the `verify`/`corroborate` paths). Optional —
    * the concrete CRE/TEE-backed implementation is S6. When absent, those paths
    * fail CLOSED: a novel input is never silently allowed.

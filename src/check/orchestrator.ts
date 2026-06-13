@@ -1,4 +1,5 @@
 import type { MatchProbe } from "../matchers/matcher.js";
+import type { PublishResult } from "../publish/params.js";
 import type { EnforcementResolution } from "../registry/enforcement.js";
 import type { RawVerdict } from "../tee/parse.js";
 import { extractFacts } from "../tx/extractFacts.js";
@@ -31,6 +32,7 @@ export interface ResolvedCheckConfig {
   novelThreatPolicy: NovelThreatPolicy;
   thresholds: ConfidenceThresholds;
   onTimeout: "deny" | "allow";
+  autoPublishConfirmedThreats: boolean;
   onEscalate?: EscalateHandler | undefined;
   escalationTimeout?: number | undefined;
 }
@@ -45,10 +47,19 @@ export function resolveCheckConfig(config: ImmunityConfig): ResolvedCheckConfig 
       escalate: config.confidenceThresholds?.escalate ?? DEFAULT_THRESHOLDS.escalate,
     },
     onTimeout: config.onTimeout ?? "deny",
+    autoPublishConfirmedThreats: config.autoPublishConfirmedThreats ?? false,
     onEscalate: config.onEscalate,
     escalationTimeout: config.escalationTimeout,
   };
 }
+
+/** Performs a detached on-chain publish/corroborate for a confirmed threat. */
+export type ConfirmedThreatPublisher = (args: {
+  verdict: RawVerdict;
+  tx: ProposedTx | null;
+  context: CheckContext;
+  mode: "verify" | "corroborate";
+}) => Promise<PublishResult | null>;
 
 export interface CheckDeps {
   resolver: { resolve(probe: MatchProbe): Promise<EnforcementResolution> };
@@ -56,6 +67,8 @@ export interface CheckDeps {
   corroborationK: () => Promise<number>;
   config: ResolvedCheckConfig;
   verifier?: NovelVerifier | undefined;
+  /** Detached write hook for the auto-publish seam (gated by config + registration). */
+  publishConfirmedThreat?: ConfirmedThreatPublisher | undefined;
   now?: (() => number) | undefined;
 }
 
@@ -97,6 +110,7 @@ export async function runCheck(
     checkId: settlement.checkId,
     novel: terminal.novel,
     txFacts: facts,
+    ...(terminal.pendingWrite ? { pendingWrite: terminal.pendingWrite } : {}),
   };
 }
 
@@ -173,15 +187,23 @@ async function runVerify(
   }
 
   const terminal = planFromVerdict(verdict, deps.config.thresholds, { novel: opts.novel });
-  if (opts.mode === "verify" && terminal.decision === "block") {
-    // TODO(S7): seed a new antibody for the confirmed novel threat.
-    log.info("TODO(S7): seed antibody for confirmed novel threat", {
-      confidence: verdict.confidence,
-    });
-  }
-  if (opts.mode === "corroborate" && terminal.decision !== "allow") {
-    // TODO(S7): publish a corroborating antibody if a registered publisher confirms.
-    log.info("TODO(S7): publish corroborating antibody", { confidence: verdict.confidence });
+
+  // Auto-publish seam (S7): on a confirmed threat, optionally write on-chain.
+  // verify→block seeds a new antibody; corroborate→(block|escalate) corroborates.
+  // Gated by the opt-in flag — the protective decision above is unaffected.
+  const confirmed =
+    (opts.mode === "verify" && terminal.decision === "block") ||
+    (opts.mode === "corroborate" && terminal.decision !== "allow");
+  if (confirmed && deps.config.autoPublishConfirmedThreats && deps.publishConfirmedThreat) {
+    // Detached: never await in the decision path; a failure is logged, caught,
+    // and resolves to null so it is never an unhandled rejection.
+    const pendingWrite = deps
+      .publishConfirmedThreat({ verdict, tx: input.tx, context: input.context, mode: opts.mode })
+      .catch((err) => {
+        log.warn("auto-publish failed; decision unaffected", { message: errMessage(err) });
+        return null;
+      });
+    return { ...terminal, pendingWrite };
   }
   return terminal;
 }
