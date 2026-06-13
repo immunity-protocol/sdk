@@ -35,13 +35,13 @@ export async function withTimeout<T>(
   label: string,
 ): Promise<T> {
   if (!ms || ms <= 0) return work;
-  let timer: ReturnType<typeof setTimeout>;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new OperationTimeoutError(label, ms)), ms);
   });
   try {
     return await Promise.race([work, timeout]);
   } finally {
-    clearTimeout(timer!);
+    clearTimeout(timer);
   }
 }

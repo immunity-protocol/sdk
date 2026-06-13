@@ -1,4 +1,8 @@
-import { classifyEnforcement, type EnforcementResolution, type EnforcementTier } from "../registry/enforcement.js";
+import {
+  type EnforcementResolution,
+  type EnforcementTier,
+  classifyEnforcement,
+} from "../registry/enforcement.js";
 import type { TxFacts } from "../tx/extractFacts.js";
 import type { Hex32 } from "../types/antibody.js";
 import { createLogger } from "../util/logger.js";
@@ -73,7 +77,12 @@ export async function settle(
   facts: TxFacts,
 ): Promise<SettlementResult> {
   try {
-    const tx = await registry.check(antibodyId, facts.tokenAddress, facts.tokenAmount, facts.originChainId);
+    const tx = await registry.check(
+      antibodyId,
+      facts.tokenAddress,
+      facts.tokenAmount,
+      facts.originChainId,
+    );
     return { checkId: tx.hash as Hex32 };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

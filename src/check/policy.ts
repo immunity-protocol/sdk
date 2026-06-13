@@ -1,5 +1,5 @@
 import type { EnforcementResolution } from "../registry/enforcement.js";
-import { decideFromVerdict, type RawVerdict } from "../tee/parse.js";
+import { type RawVerdict, decideFromVerdict } from "../tee/parse.js";
 import type { Antibody } from "../types/antibody.js";
 import type { Decision, DecisionSource, NovelThreatPolicy } from "../types/check.js";
 import type { ConfidenceThresholds, UnverifiedAntibodyPolicy } from "../types/config.js";
@@ -142,7 +142,11 @@ export function planFromVerdict(
     novel: ctx.novel,
   };
   if (d.treatAsBlock) {
-    return { ...base, decision: "block", reason: `tee verdict: ${verdict.verdict} (confidence ${verdict.confidence})` };
+    return {
+      ...base,
+      decision: "block",
+      reason: `tee verdict: ${verdict.verdict} (confidence ${verdict.confidence})`,
+    };
   }
   if (d.treatAsEscalate) {
     return {
@@ -151,5 +155,9 @@ export function planFromVerdict(
       reason: `tee verdict: ${verdict.verdict} (confidence ${verdict.confidence}) — below block threshold`,
     };
   }
-  return { ...base, decision: "allow", reason: `tee verdict: ${verdict.verdict} (confidence ${verdict.confidence})` };
+  return {
+    ...base,
+    decision: "allow",
+    reason: `tee verdict: ${verdict.verdict} (confidence ${verdict.confidence})`,
+  };
 }
