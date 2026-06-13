@@ -1,4 +1,6 @@
 import type { Address, AntibodyType, Hex32 } from "../types/antibody.js";
+import type { StorageClient } from "./client.js";
+import type { EciesBundle } from "./crypto.js";
 
 /**
  * Public envelope JSON uploaded to storage as `evidenceCid`. Consumers
@@ -28,16 +30,22 @@ export type PublicMatcherSummary =
   | { kind: "graph"; chainId: number; taintSetId: Hex32; size: number }
   | { kind: "semantic"; flavor: string; markerHint?: string };
 
-// TODO(storage-lighthouse): the envelope SCHEMA is kept (consumed by the
-// explorer/read surface). The upload/fetch transport is rebuilt on Lighthouse
-// (@lighthouse-web3/sdk + the network's `lighthouseGateway`) in the storage
-// package — the old 0G StorageClient transport was removed in S0.
+/**
+ * The envelope SCHEMA above is the public, keyless-readable surface consumed by
+ * the explorer/indexer/matchers. Transport is delegated to a `StorageClient`
+ * (signed-POST WRITE / keyless IPFS READ): the SDK holds no Lighthouse key.
+ */
 export async function uploadPublicEnvelope(
-  _envelope: PublicEnvelopeV1,
-): Promise<{ evidenceCid: Hex32; txHash: string }> {
-  throw new Error("not implemented in v1 yet (storage-lighthouse package)");
+  client: StorageClient,
+  envelope: PublicEnvelopeV1,
+  encryptedContext?: EciesBundle,
+): Promise<{ evidenceCid: Hex32; cid: string }> {
+  return client.putEvidence(envelope, encryptedContext);
 }
 
-export async function fetchPublicEnvelope(_cid: Hex32): Promise<PublicEnvelopeV1> {
-  throw new Error("not implemented in v1 yet (storage-lighthouse package)");
+export async function fetchPublicEnvelope(
+  client: StorageClient,
+  evidenceCid: Hex32,
+): Promise<PublicEnvelopeV1> {
+  return client.fetchPublicEnvelope(evidenceCid);
 }

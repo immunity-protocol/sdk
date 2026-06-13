@@ -90,6 +90,20 @@ export {
 
 export { uploadPublicEnvelope, fetchPublicEnvelope } from "./storage/envelope.js";
 export type { PublicEnvelopeV1, PublicMatcherSummary } from "./storage/envelope.js";
+export { StorageClient, canonicalJson } from "./storage/client.js";
+export type {
+  GatewayRequestV1,
+  GatewayPayloadV1,
+  GatewayResponseV1,
+  StorageClientOptions,
+} from "./storage/client.js";
+export {
+  encryptContext,
+  decryptContext,
+  getPublicKeyFromPrivate,
+} from "./storage/crypto.js";
+export type { EciesBundle } from "./storage/crypto.js";
+export { cidToHex32, hex32ToCid } from "./storage/cid.js";
 
 export { computeKeccakId } from "./keccak/id.js";
 export { hashAddressMatcher } from "./keccak/matchers/address.js";
