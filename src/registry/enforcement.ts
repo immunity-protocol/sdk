@@ -58,6 +58,7 @@ export class EnforcementResolver {
   private readonly lookup: Tier2Lookup;
   private readonly now: () => number;
   private readonly inputsTtlMs: number;
+  private readonly denyKeccakIds: ReadonlySet<Hex32>;
 
   private k: number | null = null;
   private readonly inputsCache = new Map<Hex32, { value: EnforcementInputs; expiresAt: number }>();
@@ -69,6 +70,14 @@ export class EnforcementResolver {
     negativeCache: NegativeMatcherCache;
     codeFetcher: CodeFetcher;
     chainId: number;
+    /**
+     * Operator mute-list: antibody keccak ids the local agent treats as absent,
+     * even when the Registry still flags them. Filtered out of both Tier-1 and
+     * Tier-2 matches BEFORE classification. Muting one id never lowers another
+     * antibody's on-chain corroboration — a threat corroborated by K *other*
+     * antibodies still hard-blocks.
+     */
+    denyKeccakIds?: ReadonlyArray<Hex32>;
     now?: () => number;
     inputsTtlMs?: number;
   }) {
@@ -77,6 +86,7 @@ export class EnforcementResolver {
     this.negativeCache = opts.negativeCache;
     this.now = opts.now ?? (() => Date.now());
     this.inputsTtlMs = opts.inputsTtlMs ?? 30_000;
+    this.denyKeccakIds = new Set((opts.denyKeccakIds ?? []).map((id) => id.toLowerCase() as Hex32));
     this.lookup = new Tier2Lookup({
       reads: opts.reads,
       cache: opts.cache,
@@ -95,7 +105,11 @@ export class EnforcementResolver {
 
     // Tier-1: local cache. Run ALL matchers (not first-hit) and take the
     // strongest tier — a cheap advisory hit must not mask a hard-block one.
-    const hits = await this.matchers.matchAll(probe);
+    // Muted ids are dropped before classification; if every hit is muted we
+    // fall through to Tier-2 (which may surface a non-muted corroborator).
+    const hits = (await this.matchers.matchAll(probe)).filter(
+      (h) => !this.denyKeccakIds.has(h.antibody.keccakId.toLowerCase() as Hex32),
+    );
     if (hits.length > 0) {
       const antibodies: Antibody[] = [];
       const inputs: EnforcementInputs[] = [];
@@ -127,6 +141,8 @@ export class EnforcementResolver {
       for (const id of ids) {
         if (seen.has(id)) continue;
         seen.add(id);
+        // Muted ids do not enforce, but the remaining corroborators still do.
+        if (this.denyKeccakIds.has(id)) continue;
         matched = true;
         const ab = await this.lookup.hydrate(id);
         const i = await this.enforcementInputs(id);
