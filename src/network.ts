@@ -11,10 +11,11 @@ const PLACEHOLDER_CRE_ORACLE_PUBKEY =
   "0x020000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 /**
- * Placeholder protocol storage-gateway base URL (signed-POST WRITE target).
- * TODO: set the live endpoint when the storage-gateway (-app) ships.
+ * Deployed protocol storage-gateway base URL (signed-POST WRITE target). The
+ * SDK POSTs evidence to `{storageGatewayUrl}/evidence`. Shared infra (chain-
+ * agnostic — it just pins to IPFS), so both presets reference it.
  */
-const PLACEHOLDER_STORAGE_GATEWAY_URL = "https://storage-gateway.immunity.invalid/";
+const STORAGE_GATEWAY_URL = "https://immunity-gateway.fly.dev";
 
 /**
  * Base Sepolia preset — the LIVE Immunity core network.
@@ -28,7 +29,7 @@ export const BASE_SEPOLIA: NetworkConfig = {
   rpcUrl: "https://sepolia.base.org",
   blockExplorerUrl: "https://sepolia.basescan.org",
   lighthouseGateway: "https://gateway.lighthouse.storage/ipfs/",
-  storageGatewayUrl: PLACEHOLDER_STORAGE_GATEWAY_URL,
+  storageGatewayUrl: STORAGE_GATEWAY_URL,
   creOraclePublicKey: PLACEHOLDER_CRE_ORACLE_PUBKEY,
   addresses: {
     registry: "0xdB155c21D26b917294BF0e2A1E46C9A14361BF44",
@@ -38,7 +39,7 @@ export const BASE_SEPOLIA: NetworkConfig = {
     challengeManager: "0xe83525cA155e3f285Cc58f91cB1120338ecb2417",
     creReceiver: "0xA3FD7E9E7dDc32A25441b93F34AaEcEbE0304485",
     usdc: "0x26265722fa5d94bB3A3C866124aDdC7b85670b16",
-    l2registry: "0xd37D0ad21179219796dD257E78357159bC8551e8",
+    l2registry: "0xa0A4CE62b6Fa02ed5ddFbb1DE6e56fC559033C06",
   },
 };
 
@@ -52,7 +53,7 @@ export const BASE_MAINNET: NetworkConfig = {
   rpcUrl: "https://mainnet.base.org",
   blockExplorerUrl: "https://basescan.org",
   lighthouseGateway: "https://gateway.lighthouse.storage/ipfs/",
-  storageGatewayUrl: PLACEHOLDER_STORAGE_GATEWAY_URL,
+  storageGatewayUrl: STORAGE_GATEWAY_URL,
   creOraclePublicKey: PLACEHOLDER_CRE_ORACLE_PUBKEY,
   addresses: {
     registry: "0x0000000000000000000000000000000000000000",
