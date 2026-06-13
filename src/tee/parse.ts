@@ -1,6 +1,7 @@
 import {
   type AntibodyType,
   AntibodyTypeValue,
+  type Hex32,
   type SemanticFlavor,
   SemanticFlavorValue,
   type Verdict,
@@ -23,6 +24,15 @@ export interface RawVerdict {
    * non-SEMANTIC abTypes.
    */
   marker: string | null;
+  /**
+   * The DON-attestation commitment for this verdict (the bytes32 the CRE
+   * workflow signed via `runtime.report`), set ONLY by the CRE-backed
+   * verifier after it verifies the returned attestation binds these verdict
+   * fields. Carried into `publish().attestation` so a confirmed novel threat
+   * mints an attested antibody. Absent for non-attested verifiers (the
+   * strict JSON `parseVerdict` never sets it from model output).
+   */
+  attestation?: Hex32;
 }
 
 const ABTYPE_KEYS = new Set(Object.keys(AntibodyTypeValue));
