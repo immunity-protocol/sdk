@@ -1,5 +1,6 @@
 import type { MatchProbe } from "../matchers/matcher.js";
 import type { EnforcementResolution } from "../registry/enforcement.js";
+import type { RawVerdict } from "../tee/parse.js";
 import { extractFacts } from "../tx/extractFacts.js";
 import type { CheckOptions, CheckResult, NovelThreatPolicy } from "../types/check.js";
 import type {
@@ -11,7 +12,12 @@ import type {
 } from "../types/config.js";
 import type { CheckContext, ProposedTx } from "../types/context.js";
 import { createLogger } from "../util/logger.js";
-import { type PolicyIntent, type TerminalDecision, planEnforcement, planFromVerdict } from "./policy.js";
+import {
+  type PolicyIntent,
+  type TerminalDecision,
+  planEnforcement,
+  planFromVerdict,
+} from "./policy.js";
 import { type SettlementRegistry, selectSettleAntibodyId, settle } from "./settle.js";
 import { type NovelVerifier, withTimeout } from "./verifier.js";
 
@@ -49,8 +55,8 @@ export interface CheckDeps {
   registry: SettlementRegistry;
   corroborationK: () => Promise<number>;
   config: ResolvedCheckConfig;
-  verifier?: NovelVerifier;
-  now?: () => number;
+  verifier?: NovelVerifier | undefined;
+  now?: (() => number) | undefined;
 }
 
 /**
@@ -127,8 +133,20 @@ async function runAdvisoryEscalation(
     // Operator absent/throws/times out → onTimeout decides (may allow).
     onFailure: () =>
       deps.config.onTimeout === "allow"
-        ? terminalOf("allow", intent.source, intent.confidence, "advisory escalation failed open per onTimeout", false)
-        : terminalOf("block", intent.source, intent.confidence, "advisory escalation failed closed", false),
+        ? terminalOf(
+            "allow",
+            intent.source,
+            intent.confidence,
+            "advisory escalation failed open per onTimeout",
+            false,
+          )
+        : terminalOf(
+            "block",
+            intent.source,
+            intent.confidence,
+            "advisory escalation failed closed",
+            false,
+          ),
   });
 }
 
@@ -142,9 +160,13 @@ async function runVerify(
   if (!deps.verifier) {
     return failClosedVerify(deps, resolution, opts, "tier-3 verifier unavailable");
   }
-  let verdict;
+  let verdict: RawVerdict;
   try {
-    verdict = await withTimeout(deps.verifier.verify(input), deps.config.escalationTimeout, "verify");
+    verdict = await withTimeout(
+      deps.verifier.verify(input),
+      deps.config.escalationTimeout,
+      "verify",
+    );
   } catch (err) {
     log.warn("tier-3 verify failed; failing closed", { message: errMessage(err) });
     return failClosedVerify(deps, resolution, opts, "tier-3 verifier failed");
@@ -153,7 +175,9 @@ async function runVerify(
   const terminal = planFromVerdict(verdict, deps.config.thresholds, { novel: opts.novel });
   if (opts.mode === "verify" && terminal.decision === "block") {
     // TODO(S7): seed a new antibody for the confirmed novel threat.
-    log.info("TODO(S7): seed antibody for confirmed novel threat", { confidence: verdict.confidence });
+    log.info("TODO(S7): seed antibody for confirmed novel threat", {
+      confidence: verdict.confidence,
+    });
   }
   if (opts.mode === "corroborate" && terminal.decision !== "allow") {
     // TODO(S7): publish a corroborating antibody if a registered publisher confirms.
@@ -204,10 +228,26 @@ async function consultOperator(
 ): Promise<TerminalDecision> {
   if (!deps.config.onEscalate) return opts.onFailure();
   try {
-    const allowed = await withTimeout(deps.config.onEscalate(ctx), deps.config.escalationTimeout, "escalate");
+    const allowed = await withTimeout(
+      deps.config.onEscalate(ctx),
+      deps.config.escalationTimeout,
+      "escalate",
+    );
     return allowed
-      ? terminalOf("allow", opts.source, opts.confidence, `${ctx.reason}: operator allowed`, opts.novel)
-      : terminalOf("block", opts.source, opts.confidence, `${ctx.reason}: operator blocked`, opts.novel);
+      ? terminalOf(
+          "allow",
+          opts.source,
+          opts.confidence,
+          `${ctx.reason}: operator allowed`,
+          opts.novel,
+        )
+      : terminalOf(
+          "block",
+          opts.source,
+          opts.confidence,
+          `${ctx.reason}: operator blocked`,
+          opts.novel,
+        );
   } catch (err) {
     log.warn("operator escalation failed; failing closed", { message: errMessage(err) });
     return opts.onFailure();

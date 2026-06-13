@@ -77,7 +77,7 @@ export class EnforcementResolver {
      * antibody's on-chain corroboration — a threat corroborated by K *other*
      * antibodies still hard-blocks.
      */
-    denyKeccakIds?: ReadonlyArray<Hex32>;
+    denyKeccakIds?: ReadonlyArray<Hex32> | undefined;
     now?: () => number;
     inputsTtlMs?: number;
   }) {

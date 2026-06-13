@@ -1,4 +1,5 @@
 import type { Signer } from "ethers";
+import type { NovelVerifier } from "../check/verifier.js";
 import type { Address, Hex } from "./antibody.js";
 import type { NovelThreatPolicy } from "./check.js";
 
@@ -95,6 +96,12 @@ export interface ImmunityConfig {
   novelThreatPolicy?: NovelThreatPolicy;
   /** Read-side policy for not-yet-hard-block-eligible (advisory) antibodies. */
   unverifiedAntibodyPolicy?: UnverifiedAntibodyPolicy;
+  /**
+   * Tier-3 novel-input verifier (the `verify`/`corroborate` paths). Optional —
+   * the concrete CRE/TEE-backed implementation is S6. When absent, those paths
+   * fail CLOSED: a novel input is never silently allowed.
+   */
+  verifier?: NovelVerifier;
   /**
    * Antibody keccak ids the operator wants the local agent to mute, even
    * when the on-chain Registry still flags them. Local-only filter applied
