@@ -1,25 +1,25 @@
 {
   "name": "@immunity-protocol/sdk",
   "version": "0.6.10",
-  "description": "Immunity SDK: decentralized threat intelligence for AI agents on 0G Chain.",
+  "description": "Immunity SDK: decentralized threat intelligence for AI agents on Base.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ophelios-studio/immunity-sdk.git"
+    "url": "git+https://github.com/immunity-protocol/sdk.git"
   },
-  "homepage": "https://github.com/ophelios-studio/immunity-sdk#readme",
+  "homepage": "https://github.com/immunity-protocol/sdk#readme",
   "bugs": {
-    "url": "https://github.com/ophelios-studio/immunity-sdk/issues"
+    "url": "https://github.com/immunity-protocol/sdk/issues"
   },
   "keywords": [
     "immunity",
     "threat-intelligence",
     "ai-agents",
-    "0g",
-    "axl",
-    "gensyn",
+    "base",
+    "ens",
+    "chainlink",
+    "lighthouse",
     "antibody",
-    "tee",
     "ethers"
   ],
   "type": "module",
@@ -36,7 +36,6 @@
   "files": [
     "dist",
     "abi",
-    "infra/axl-mesh",
     "README.md",
     "LICENSE"
   ],
@@ -54,11 +53,8 @@
     "format": "biome format --write ."
   },
   "dependencies": {
-    "@0gfoundation/0g-ts-sdk": "1.2.2",
-    "@0glabs/0g-serving-broker": "0.7.5",
-    "axl-pubsub": "^0.1.1",
-    "ethers": "^6.14.0",
-    "openai": "^4.0.0"
+    "@lighthouse-web3/sdk": "^0.3.7",
+    "ethers": "^6.14.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
