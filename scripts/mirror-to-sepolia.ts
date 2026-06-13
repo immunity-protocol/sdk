@@ -15,7 +15,7 @@ import { computeKeccakId } from "../src/keccak/id.js";
 
 const BASE_RPC = process.env.BASE_SEPOLIA_RPC_URL ?? "https://base-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL ?? "https://eth-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
-const REG = "0x9bD765E191e186679252467Ebbc1D389a59E04B8";
+const REG = "0x7047F4D54A1F4C337BF940cBDee0E68D79B0323b";
 const PROTECTED_SET = "0x95faC80e27419619A9108C53573bf9A77967397A";
 const MIRROR = process.env.MIRROR_ADDRESS ?? "0x6C65b6588B6FE02D33fDc090E6F5432e3Df62fba";
 const BASE_CHAIN = 84532; // matcherHash chain (where the antibodies live)
@@ -32,10 +32,13 @@ const targets = [
   "0x000000000035b5e5ad9019092c665357240f594e",
   "0x0000d38a234679f88dd6343d34e26dcb50c30000",
 ] as const;
+// The 3 publishers that re-seeded the new lottery Registry: deployer (genesis-1)
+// + the two reused throwaways (registered + rep'd). Any one of them holds an
+// eligible (ACTIVE) antibody per target to mirror.
 const pubs: string[] = [
   "0x18628A448938aD61C3AAd97Eca1f99DE310684B4",
-  "0xC325Fa14E5E48708b3e1cB16c6fde9D1bed5758E",
-  "0xA1E7E10e89dD7EFAc1e7CbDc34015Ce2A1773060",
+  "0xD1744554A6525dE0EA0b6f6B8AD685f2834B5b7b",
+  "0x431285613e345bc9a30bE3cC4ac3D19C0Eb7c333",
 ];
 
 const pRead = new ethers.JsonRpcProvider(BASE_RPC, BASE_CHAIN);

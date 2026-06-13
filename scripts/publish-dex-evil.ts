@@ -21,7 +21,7 @@ import { Immunity, BASE_SEPOLIA } from "../src/index.js";
 loadEnv();
 
 const RPC = process.env.BASE_SEPOLIA_RPC_URL ?? "https://base-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
-const REGISTRY = "0x9bD765E191e186679252467Ebbc1D389a59E04B8";
+const REGISTRY = "0x7047F4D54A1F4C337BF940cBDee0E68D79B0323b";
 const USDC = "0xe697EF7724453F239D8c0EB9295D87C344D9CE60";
 
 // The /dex "EVIL" token on Ethereum Sepolia (the protected pool's currency1).

@@ -27,7 +27,7 @@ loadEnv();
 
 const BASE_RPC = process.env.BASE_SEPOLIA_RPC_URL ?? "https://base-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL ?? "https://eth-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
-const REGISTRY = "0x9bD765E191e186679252467Ebbc1D389a59E04B8";
+const REGISTRY = "0x7047F4D54A1F4C337BF940cBDee0E68D79B0323b";
 const MIRROR = process.env.MIRROR_ADDRESS ?? "0x6C65b6588B6FE02D33fDc090E6F5432e3Df62fba";
 const EVIL = "0xC6dFD5fCb9EB7D210c5D3C5bAB1681094Adfa281".toLowerCase() as `0x${string}`;
 const ENFORCEMENT_CHAIN = 11155111;

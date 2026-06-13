@@ -17,7 +17,7 @@ import { computeKeccakId } from "../src/keccak/id.js";
 
 const RPC = process.env.BASE_SEPOLIA_RPC_URL ?? "https://base-sepolia.g.alchemy.com/v2/C5BdobTzYALqWfs3wDc-I";
 const CHAIN = 84532;
-const REGISTRY = "0x9bD765E191e186679252467Ebbc1D389a59E04B8";
+const REGISTRY = "0x7047F4D54A1F4C337BF940cBDee0E68D79B0323b";
 const USDC = "0xe697EF7724453F239D8c0EB9295D87C344D9CE60";
 const GENESIS_1 = "0x18628A448938aD61C3AAd97Eca1f99DE310684B4" as `0x${string}`;
 
