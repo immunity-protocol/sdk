@@ -1,11 +1,167 @@
 [
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_usdc",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_treasury",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_checkFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_forwarder",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_expectedWorkflowId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_expectedWorkflowOwner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "DuplicateCheck",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidWorkflowId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidWorkflowOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotForwarder",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "SafeERC20FailedOperation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnknownCheck",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroCheckId",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "bytes32", "name": "checkId", "type": "bytes32" },
-      { "indexed": true, "internalType": "address", "name": "requester", "type": "address" },
-      { "indexed": false, "internalType": "bytes32", "name": "evidenceCid", "type": "bytes32" },
-      { "indexed": false, "internalType": "bytes32", "name": "contextHash", "type": "bytes32" }
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "checkFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "CheckFeeUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "checkId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "requester",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "evidenceCid",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "contextHash",
+        "type": "bytes32"
+      }
     ],
     "name": "VerificationRequested",
     "type": "event"
@@ -13,10 +169,42 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "bytes32", "name": "checkId", "type": "bytes32" },
-      { "indexed": false, "internalType": "uint8", "name": "verdict", "type": "uint8" },
-      { "indexed": false, "internalType": "uint16", "name": "confidence", "type": "uint16" },
-      { "indexed": false, "internalType": "uint8", "name": "severity", "type": "uint8" }
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "checkId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "verdict",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "confidence",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "severity",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "abType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "flavor",
+        "type": "uint8"
+      }
     ],
     "name": "Verified",
     "type": "event"
@@ -24,15 +212,190 @@
   {
     "inputs": [],
     "name": "checkFee",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "expectedWorkflowId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "expectedWorkflowOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "forwarder",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "bytes32", "name": "checkId", "type": "bytes32" },
-      { "internalType": "bytes32", "name": "evidenceCid", "type": "bytes32" },
-      { "internalType": "bytes32", "name": "contextHash", "type": "bytes32" }
+      {
+        "internalType": "bytes32",
+        "name": "checkId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getVerdict",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "verdict",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "confidence",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "severity",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "abType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "flavor",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "string",
+            "name": "marker",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "reasoning",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct NovelVerification.Result",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "metadata",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "report",
+        "type": "bytes"
+      }
+    ],
+    "name": "onReport",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "pending",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "checkId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "evidenceCid",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "contextHash",
+        "type": "bytes32"
+      }
     ],
     "name": "requestVerification",
     "outputs": [],
@@ -40,13 +403,126 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "bytes32", "name": "checkId", "type": "bytes32" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_checkFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "setCheckFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "treasury",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "usdc",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "name": "verdictOf",
     "outputs": [
-      { "internalType": "uint8", "name": "verdict", "type": "uint8" },
-      { "internalType": "uint16", "name": "confidence", "type": "uint16" },
-      { "internalType": "uint8", "name": "severity", "type": "uint8" },
-      { "internalType": "uint64", "name": "at", "type": "uint64" }
+      {
+        "internalType": "uint8",
+        "name": "verdict",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint16",
+        "name": "confidence",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint8",
+        "name": "severity",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "abType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "flavor",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint64",
+        "name": "at",
+        "type": "uint64"
+      },
+      {
+        "internalType": "string",
+        "name": "marker",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "reasoning",
+        "type": "string"
+      }
     ],
     "stateMutability": "view",
     "type": "function"

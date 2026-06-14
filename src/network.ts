@@ -47,7 +47,7 @@ export const BASE_SEPOLIA: NetworkConfig = {
     protectedSet: "0x95faC80e27419619A9108C53573bf9A77967397A",
     challengeManager: "0xc71c354fFf57652A64b214F654E1A68c7f3cef79",
     creReceiver: "0x02ED0a8b0e6b98C1C05CE125157566313cEe4834",
-    novelVerification: "0xe151F9f3cBa23DdDcB7e3379e739F17436488376",
+    novelVerification: "0x06018Fc0347fC7f0283b7Ad0f80A463139870cE2",
     usdc: "0xe697EF7724453F239D8c0EB9295D87C344D9CE60",
     l2registry: "0xded674AAbCe67B2cFe724c8c50c928830468E0cC",
   },

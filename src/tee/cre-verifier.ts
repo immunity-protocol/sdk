@@ -3,7 +3,7 @@ import type { NovelVerifier } from "../check/verifier.js";
 import { withTimeout } from "../check/verifier.js";
 import type { EciesBundle } from "../storage/crypto.js";
 import { encryptContext } from "../storage/crypto.js";
-import type { Address, AntibodyType, Hex32 } from "../types/antibody.js";
+import type { Address, AntibodyType, Hex32, SemanticFlavor } from "../types/antibody.js";
 import type { CheckContext, ProposedTx } from "../types/context.js";
 import { TeeResponseError } from "../types/errors.js";
 import { createLogger } from "../util/logger.js";
@@ -69,6 +69,14 @@ export interface OnChainVerdict {
   verdict: number;
   confidence: number;
   severity: number;
+  /** SDK AntibodyType ordering (ADDRESS=0…SEMANTIC=4) the CRE classified. */
+  abType: number;
+  /** SDK SemanticFlavor ordering (COUNTERPARTY=0, MANIPULATION=1, PROMPT_INJECTION=2). */
+  flavor: number;
+  /** SEMANTIC marker (verbatim injection substring) the CRE TEE extracted; "" otherwise. */
+  marker: string;
+  /** The model's human-readable rationale (ENShell-style); "" if none. */
+  reasoning: string;
 }
 
 /**
@@ -85,12 +93,16 @@ export interface NovelVerificationLike {
     evidenceCid: Hex32,
     contextHash: Hex32,
   ): Promise<{ hash: string; wait(): Promise<unknown> }>;
-  /** Read the stored verdict; `at === 0` means no verdict yet. */
-  verdictOf(checkId: Hex32): Promise<{
+  /** Read the full stored verdict struct; `at === 0` means no verdict yet. */
+  getVerdict(checkId: Hex32): Promise<{
     verdict: bigint | number;
     confidence: bigint | number;
     severity: bigint | number;
+    abType: bigint | number;
+    flavor: bigint | number;
     at: bigint | number;
+    marker: string;
+    reasoning: string;
   }>;
 }
 
@@ -139,6 +151,22 @@ const CONTRACT_VERDICT: Record<number, RawVerdict["verdict"]> = {
   0: "BENIGN",
   1: "SUSPICIOUS",
   2: "MALICIOUS",
+};
+
+/** On-chain abType code (SDK AntibodyType ordering) → string. */
+const ABTYPE_BY_CODE: Record<number, AntibodyType> = {
+  0: "ADDRESS",
+  1: "CALL_PATTERN",
+  2: "BYTECODE",
+  3: "GRAPH",
+  4: "SEMANTIC",
+};
+
+/** On-chain flavor code (SDK SemanticFlavor ordering) → string. */
+const FLAVOR_BY_CODE: Record<number, SemanticFlavor> = {
+  0: "COUNTERPARTY",
+  1: "MANIPULATION",
+  2: "PROMPT_INJECTION",
 };
 
 /**
@@ -246,12 +274,31 @@ export class CreNovelVerifier implements NovelVerifier {
    */
   async #awaitVerdict(checkId: Hex32): Promise<OnChainVerdict> {
     for (;;) {
-      const v = await this.#contract.verdictOf(checkId);
+      const raw = await this.#contract.getVerdict(checkId);
+      // ethers returns a Result (array-like). The struct field `at` collides with
+      // Result.prototype.at(), so named access yields the METHOD, not the value —
+      // normalize via toObject() (real ethers) or use the plain object (mocks).
+      const v = (typeof (raw as { toObject?: unknown }).toObject === "function"
+        ? (raw as unknown as { toObject(): Record<string, unknown> }).toObject()
+        : raw) as unknown as {
+        verdict: bigint | number;
+        confidence: bigint | number;
+        severity: bigint | number;
+        abType: bigint | number;
+        flavor: bigint | number;
+        at: bigint | number;
+        marker: string;
+        reasoning: string;
+      };
       if (Number(v.at) > 0) {
         return {
           verdict: Number(v.verdict),
           confidence: Number(v.confidence),
           severity: Number(v.severity),
+          abType: Number(v.abType),
+          flavor: Number(v.flavor),
+          marker: typeof v.marker === "string" ? v.marker : "",
+          reasoning: typeof v.reasoning === "string" ? v.reasoning : "",
         };
       }
       await this.#sleep(this.#pollIntervalMs);
@@ -271,18 +318,20 @@ export class CreNovelVerifier implements NovelVerifier {
     if (!inRange(v.confidence) || !inRange(v.severity)) {
       throw new TeeResponseError("on-chain confidence/severity out of [0,100]");
     }
-    // The contract verdict has no abType/marker dimension; the SDK seeds an
-    // ADDRESS antibody from the tx when one is present, else SEMANTIC from the
-    // content. `seedFromTx` re-validates downstream; here we only pick the type.
-    const abType: AntibodyType = input.tx ? "ADDRESS" : "SEMANTIC";
+    // The CRE classifies the antibody type, flavor, and (for SEMANTIC) the
+    // verbatim marker, all carried on-chain in the verdict. The SDK trusts that
+    // classification; `seedFromTx` still re-validates the marker downstream.
+    const abType = ABTYPE_BY_CODE[v.abType] ?? (input.tx ? "ADDRESS" : "SEMANTIC");
+    const flavor = abType === "SEMANTIC" ? (FLAVOR_BY_CODE[v.flavor] ?? "PROMPT_INJECTION") : null;
+    const marker = abType === "SEMANTIC" && v.marker.trim() !== "" ? v.marker.trim() : null;
     return {
       verdict,
       abType,
-      flavor: null,
+      flavor,
       confidence: v.confidence,
       severity: v.severity,
-      reasoning: `CRE on-chain verdict (checkId ${checkId})`,
-      marker: null,
+      reasoning: v.reasoning.trim() !== "" ? v.reasoning : `CRE on-chain verdict (checkId ${checkId})`,
+      marker,
       attestation: verdictCommitment(checkId, v),
     };
   }

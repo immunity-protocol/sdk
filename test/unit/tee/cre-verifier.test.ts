@@ -27,7 +27,7 @@ interface Captured {
 
 /** Build a verifier + capture harness with a chosen on-chain verdict tuple. */
 function harness(opts: {
-  verdict: OnChainVerdict;
+  verdict: { verdict: number; confidence: number; severity: number } & Partial<OnChainVerdict>;
   /** Number of empty (at===0) polls before the verdict appears. Default 0. */
   pollsBeforeVerdict?: number;
   /** Allowance reported by USDC (default 0 → forces an approve). */
@@ -57,10 +57,11 @@ function harness(opts: {
       captured.request = { checkId, evidenceCid, contextHash };
       return { hash: "0xreq", wait: async () => undefined };
     },
-    verdictOf: async (_checkId: Hex32) => {
-      if (opts.neverVerdict) return { verdict: 0, confidence: 0, severity: 0, at: 0 };
-      if (polls++ < pollsBefore) return { verdict: 0, confidence: 0, severity: 0, at: 0 };
-      return { ...opts.verdict, at: 1_700_000_000 };
+    getVerdict: async (_checkId: Hex32) => {
+      const empty = { verdict: 0, confidence: 0, severity: 0, abType: 0, flavor: 0, marker: "", reasoning: "", at: 0 };
+      if (opts.neverVerdict) return empty;
+      if (polls++ < pollsBefore) return empty;
+      return { abType: 0, flavor: 0, marker: "", reasoning: "", ...opts.verdict, at: 1_700_000_000 };
     },
   };
 
@@ -125,10 +126,10 @@ describe("CreNovelVerifier (Path B — on-chain trigger)", () => {
   });
 
   it("maps BENIGN(0) → BENIGN (allow path)", async () => {
-    const { verifier } = harness({ verdict: { verdict: 0, confidence: 5, severity: 0 } });
+    const { verifier } = harness({ verdict: { verdict: 0, confidence: 5, severity: 0, abType: 4 } });
     const v = await verifier.verify({ tx: null, context: ctx });
     expect(v.verdict).toBe("BENIGN");
-    expect(v.abType).toBe("SEMANTIC"); // no tx → SEMANTIC seed
+    expect(v.abType).toBe("SEMANTIC"); // CRE classified abType=4 (SEMANTIC)
   });
 
   it("approves USDC when allowance is short of the fee", async () => {
