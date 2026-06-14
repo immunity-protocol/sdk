@@ -57,6 +57,9 @@ export function seedFromTx(
       // BYTECODE / GRAPH use, which is still a useful (if narrower)
       // signal: the agent was about to send to a known-bad counterparty.
       if (semanticAutoMint) {
+        // The CRE returns the verbatim injection marker it extracted in-TEE
+        // (NovelVerification.Result.marker); the SDK validates it (length, word
+        // count, denylist, and substring-of-bundle anti-hallucination) before use.
         const marker = verdict.marker?.trim() ?? null;
         if (marker && verdict.flavor && validateMarker(marker, ctx)) {
           return {

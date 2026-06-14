@@ -241,7 +241,10 @@ export class Immunity {
   }): Promise<PublishResult | null> {
     const deps = this.#writeDeps();
     if (!(await isRegistered(deps))) return null;
-    const seed = seedFromTx(args.verdict, args.tx, args.context, this.#network.chainId);
+    // Enabling auto-publish opts into SEMANTIC auto-mint too: a CRE-confirmed
+    // novel injection mints a marker-based SEMANTIC antibody (the marker is
+    // validated by seedFromTx's guardrails before it is trusted).
+    const seed = seedFromTx(args.verdict, args.tx, args.context, this.#network.chainId, true);
     if (!seed) return null;
 
     const target =
